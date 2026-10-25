@@ -79,6 +79,7 @@ class ScanViewModelTest {
         confirmPrediction = ConfirmPredictionUseCase(captures),
         correctPrediction = CorrectPredictionUseCase(captures, telemetry),
         classifier = classifier,
+        telemetry = telemetry,
     )
 
     /**

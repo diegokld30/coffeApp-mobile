@@ -3,7 +3,7 @@
   Tema XML mínimo. El tema real es Compose (`AgroTheme`); esto solo cubre la
   ventana antes de que Compose tome el control.
 
-  Que el fondo sea `bench_50` y no blanco importa más de lo que parece: en un
+  Que el fondo sea `mist` (el mismo de `AgroColors.Mist`) y no blanco importa más de lo que parece: en un
   teléfono lento el arranque en frío muestra esta ventana durante cientos de
   milisegundos, y un salto de blanco a gris neutro al componer se percibe como
   parpadeo.
@@ -11,14 +11,14 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
 
     <style name="Theme.AgroVision" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@color/bench_50</item>
+        <item name="android:windowBackground">@color/mist</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLightStatusBar" tools:targetApi="23">true</item>
+        <item name="android:windowLightStatusBar" tools:targetApi="23">false</item>
     </style>
 
     <style name="Theme.AgroVision.Starting" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/bench_50</item>
+        <item name="windowSplashScreenBackground">@color/mist</item>
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
         <item name="postSplashScreenTheme">@style/Theme.AgroVision</item>
     </style>

@@ -20,6 +20,7 @@ import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import javax.inject.Inject
+import kotlin.math.ln
 import javax.inject.Singleton
 
 /**
@@ -56,6 +57,9 @@ class LiteRtPestClassifier @Inject constructor(
     @Dispatcher(AgroDispatcher.Inference)
     private val inferenceDispatcher: CoroutineDispatcher,
     private val listener: InferenceTelemetryListener,
+    // Las compuertas 2 y 3 se arman con la calibración y las etiquetas del modelo
+    // activo: sin esto el respaldo del modelo heredado se queda sin etiquetas
+    private val gateHolder: ActiveGateHolder,
 ) : PestClassifier {
 
     private var session: Session? = null
@@ -73,7 +77,10 @@ class LiteRtPestClassifier @Inject constructor(
         // Si ya hay una sesión de esta misma versión, no se reconstruye: crear el
         // intérprete es lo caro, y el puntero de ranura solo cambia tras una
         // actualización.
-        if (existing != null && existing.version == model.version) return@withContext
+        if (existing != null && existing.version == model.version) {
+            gateHolder.update(model)
+            return@withContext
+        }
 
         existing?.close()
         session = null
@@ -83,6 +90,8 @@ class LiteRtPestClassifier @Inject constructor(
             .getOrNull()
 
         session?.let { active ->
+            gateHolder.update(model)
+
             // Inferencia con tensor vacío. Fuerza la asignación de los buffers
             // nativos y la compilación del grafo por parte del delegate.
             runCatching { active.runEmpty() }
@@ -148,22 +157,40 @@ class LiteRtPestClassifier @Inject constructor(
         val accelerator: AcceleratorChoice,
         val quantizedInput: Boolean,
         private val logitsIndex: Int,
+        /** -1 en un modelo de una sola salida: no hay embedding. */
         private val embeddingIndex: Int,
         private val logitsSize: Int,
         private val embeddingSize: Int,
+        private val logitsType: DataType,
+        private val logitsScale: Float,
+        private val logitsZeroPoint: Int,
     ) {
         private var closed = false
 
-        fun run(input: ByteBuffer): Pair<FloatArray, FloatArray> {
-            val logits = FloatArray(logitsSize)
-            val embedding = FloatArray(embeddingSize)
+        private val quantizedLogits: Boolean
+            get() = logitsType == DataType.UINT8 || logitsType == DataType.INT8
 
-            val outputs = mapOf(
-                logitsIndex to arrayOf(logits),
-                embeddingIndex to arrayOf(embedding),
-            )
+        fun run(input: ByteBuffer): Pair<FloatArray, FloatArray> {
+            val embedding = FloatArray(embeddingSize)
+            val floatLogits = FloatArray(if (quantizedLogits) 0 else logitsSize)
+            val byteLogits = ByteArray(if (quantizedLogits) logitsSize else 0)
+
+            val outputs = HashMap<Int, Any>()
+            outputs[logitsIndex] = if (quantizedLogits) arrayOf(byteLogits) else arrayOf(floatLogits)
+            if (embeddingIndex >= 0) outputs[embeddingIndex] = arrayOf(embedding)
             interpreter.runForMultipleInputsOutputs(arrayOf<Any>(input), outputs)
+
+            val raw = if (quantizedLogits) dequantize(byteLogits) else floatLogits
+            // Un modelo de una sola salida termina en softmax: lo que sale son
+            // probabilidades. Se pasan a logits (ln p) para que el resto de la
+            // cadena —que trabaja con logits y temperatura— no distinga el caso.
+            val logits = if (embeddingIndex < 0) FloatArray(raw.size) { ln(raw[it].coerceAtLeast(MIN_PROBABILITY)) } else raw
             return logits to embedding
+        }
+
+        private fun dequantize(bytes: ByteArray): FloatArray = FloatArray(bytes.size) { index ->
+            val value = if (logitsType == DataType.UINT8) bytes[index].toInt() and 0xFF else bytes[index].toInt()
+            (value - logitsZeroPoint) * logitsScale
         }
 
         fun runEmpty() {
@@ -213,10 +240,14 @@ class LiteRtPestClassifier @Inject constructor(
                 interpreter: Interpreter,
                 accelerator: AcceleratorChoice,
             ): Session {
-                require(interpreter.outputTensorCount >= 2) {
-                    "El modelo ${model.version} expone ${interpreter.outputTensorCount} salida(s). " +
-                        "La doble salida —logits + embedding— es requisito de arquitectura (§7.1): " +
-                        "sin embedding no existen ni el detector OOD ni la agrupación por similitud."
+                // Con una sola salida el modelo es «simple»: solo clasifica. Sin embedding
+                // no hay detector fuera de dominio ni agrupación por similitud, y lo
+                // sabe la calibración (isSimple); con dos salidas se exige el embedding.
+                require(interpreter.outputTensorCount >= 1) {
+                    "El modelo ${model.version} no expone ninguna salida."
+                }
+                require(interpreter.outputTensorCount >= 2 || model.calibration?.isSimple == true) {
+                    "El modelo ${model.version} expone una sola salida pero su calibración exige embedding (§7.1)."
                 }
 
                 val classCount = model.labels.size
@@ -230,7 +261,10 @@ class LiteRtPestClassifier @Inject constructor(
                             "El .tflite y el labels.json son de versiones distintas."
                     )
                 val embedding = sizes.firstOrNull { it.first != logits.first }
-                    ?: error("No se encontró la salida de embedding en ${model.version}")
+                    ?: if (model.calibration?.isSimple == true) -1 to 0
+                    else error("No se encontró la salida de embedding en ${model.version}")
+                val logitsTensor = interpreter.getOutputTensor(logits.first)
+                val quantization = logitsTensor.quantizationParams()
 
                 return Session(
                     version = model.version,
@@ -242,6 +276,9 @@ class LiteRtPestClassifier @Inject constructor(
                     embeddingIndex = embedding.first,
                     logitsSize = logits.second,
                     embeddingSize = embedding.second,
+                    logitsType = logitsTensor.dataType(),
+                    logitsScale = quantization.scale,
+                    logitsZeroPoint = quantization.zeroPoint,
                 )
             }
 
@@ -257,6 +294,9 @@ class LiteRtPestClassifier @Inject constructor(
     private companion object {
         const val TAG = "AgroVision.Inference"
         const val NANOS_PER_MILLI = 1_000_000L
+
+        /** Evita ln(0) cuando una clase sale con probabilidad cero cuantizada. */
+        const val MIN_PROBABILITY = 1e-6f
     }
 }
 

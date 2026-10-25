@@ -2,40 +2,50 @@ package co.agrovision.core.designsystem.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.sp
+import co.agrovision.core.designsystem.R
 
 /**
  * Tipografía (§11.3).
  *
  * | Rol | Familia | Por qué |
  * |---|---|---|
- * | Títulos | Archivo Expanded 600 | Presencia en encabezados sin robar espacio a los datos. Solo H1 y H2. |
- * | Interfaz | Archivo 400/500/600 | Legible en tamaños densos. |
+ * | Títulos | Plus Jakarta Sans 800 | Formas abiertas y redondas: se lee cercana y actual, no institucional. |
+ * | Interfaz | Plus Jakarta Sans 400–700 | Una sola familia en toda la interfaz; la jerarquía la da el peso. |
  * | Datos | IBM Plex Mono 400/500 | Confianzas, versiones, coordenadas. **Cifras tabulares alineadas.** |
  *
  * La monoespaciada para datos no es preferencia estética. Una lista de
  * confianzas —`0.91`, `0.07`, `0.02`— con cifras de ancho variable obliga a leer
  * número por número; con cifras tabulares la columna se escanea de un vistazo.
  *
- * ⚠️ **Falta añadir los archivos de fuente.** Hasta que estén en
- * `core/designsystem/src/main/res/font/`, las tres familias caen a las del
- * sistema y la app se ve correcta pero genérica. Ver README §Tipografía.
+ * Los archivos viven en `core/designsystem/src/main/res/font/`: estáticos y no
+ * variables, porque las fuentes variables no se aplican antes de la API 26 y el
+ * parque objetivo empieza en la 22. Licencia SIL OFL 1.1 (Google Fonts).
  */
 object AgroFonts {
 
-    /**
-     * Sustituir por `FontFamily(Font(R.font.archivo_expanded_semibold, FontWeight.SemiBold))`
-     * al añadir el archivo.
-     */
-    val Display: FontFamily = FontFamily.SansSerif
+    /** Plus Jakarta Sans 800, con interletraje cerrado. Solo títulos. */
+    val Display: FontFamily = FontFamily(
+        Font(R.font.jakarta_extrabold, FontWeight.ExtraBold),
+        Font(R.font.jakarta_bold, FontWeight.Bold),
+    )
 
-    val Sans: FontFamily = FontFamily.SansSerif
+    val Sans: FontFamily = FontFamily(
+        Font(R.font.jakarta_regular, FontWeight.Normal),
+        Font(R.font.jakarta_medium, FontWeight.Medium),
+        Font(R.font.jakarta_semibold, FontWeight.SemiBold),
+        Font(R.font.jakarta_bold, FontWeight.Bold),
+    )
 
-    /** Sustituir por IBM Plex Mono. Debe tener `tnum` activo por defecto. */
-    val Mono: FontFamily = FontFamily.Monospace
+    /** IBM Plex Mono. Sus cifras ya son tabulares. */
+    val Mono: FontFamily = FontFamily(
+        Font(R.font.plex_mono_regular, FontWeight.Normal),
+        Font(R.font.plex_mono_medium, FontWeight.Medium),
+    )
 }
 
 /**
@@ -63,34 +73,37 @@ private val TightLineHeight = LineHeightStyle(
 val AgroTypography = Typography(
     displaySmall = TextStyle(
         fontFamily = AgroFonts.Display,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.ExtraBold,
         fontSize = AgroTextSizes.Display,
         lineHeight = 40.sp,
+        letterSpacing = (-0.8).sp,
         lineHeightStyle = TightLineHeight,
     ),
     headlineLarge = TextStyle(
         fontFamily = AgroFonts.Display,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.ExtraBold,
         fontSize = AgroTextSizes.Xxl,
         lineHeight = 34.sp,
+        letterSpacing = (-0.6).sp,
         lineHeightStyle = TightLineHeight,
     ),
     headlineMedium = TextStyle(
         fontFamily = AgroFonts.Display,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.ExtraBold,
         fontSize = AgroTextSizes.Xl,
         lineHeight = 28.sp,
+        letterSpacing = (-0.4).sp,
         lineHeightStyle = TightLineHeight,
     ),
     titleLarge = TextStyle(
         fontFamily = AgroFonts.Sans,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Bold,
         fontSize = AgroTextSizes.Lg,
         lineHeight = 26.sp,
     ),
     titleMedium = TextStyle(
         fontFamily = AgroFonts.Sans,
-        fontWeight = FontWeight.Medium,
+        fontWeight = FontWeight.SemiBold,
         fontSize = AgroTextSizes.Base,
         lineHeight = 22.sp,
     ),

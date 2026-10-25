@@ -1,6 +1,7 @@
 package co.agrovision.ml.inference
 
 import android.util.Log
+import org.tensorflow.lite.DataType
 import org.tensorflow.lite.Interpreter
 import java.io.File
 import java.io.FileInputStream
@@ -67,12 +68,10 @@ class SmokeTestRunner @Inject constructor() {
             }
             interpreter = Interpreter(buffer, configured.options)
 
+            // Un modelo de una sola salida es válido (solo clasifica); si trae
+            // embedding, la salida de logits sigue encontrándose por su tamaño.
             if (interpreter.outputTensorCount < MIN_OUTPUTS) {
-                Log.e(
-                    TAG,
-                    "El modelo expone ${interpreter.outputTensorCount} salida(s); " +
-                        "se exigen $MIN_OUTPUTS (logits + embedding, §7.1)."
-                )
+                Log.e(TAG, "El modelo no expone ninguna salida.")
                 return false
             }
 
@@ -89,8 +88,13 @@ class SmokeTestRunner @Inject constructor() {
                 return false
             }
 
+            // Las salidas cuantizadas (uint8/int8) se leen como bytes: no pueden ser NaN.
             val outputs = outputSizes
-                .mapIndexed { index, size -> index to arrayOf(FloatArray(size)) }
+                .mapIndexed { index, size ->
+                    val type = interpreter.getOutputTensor(index).dataType()
+                    val quantized = type == DataType.UINT8 || type == DataType.INT8
+                    index to (if (quantized) arrayOf(ByteArray(size)) else arrayOf(FloatArray(size)))
+                }
                 .toMap()
 
             interpreter.runForMultipleInputsOutputs(
@@ -98,9 +102,8 @@ class SmokeTestRunner @Inject constructor() {
                 outputs,
             )
 
-            val logits = (outputs[logitsIndex] as Array<*>)[0] as FloatArray
-            val finite = logits.all { it.isFinite() }
-            if (!finite) {
+            val logits = (outputs[logitsIndex] as Array<*>)[0]
+            if (logits is FloatArray && !logits.all { it.isFinite() }) {
                 Log.e(TAG, "La inferencia de humo produjo valores no finitos.")
                 return false
             }
@@ -136,7 +139,7 @@ class SmokeTestRunner @Inject constructor() {
 
     private companion object {
         const val TAG = "AgroVision.SmokeTest"
-        const val MIN_OUTPUTS = 2
+        const val MIN_OUTPUTS = 1
         const val RAMP_PERIOD = 256
     }
 }

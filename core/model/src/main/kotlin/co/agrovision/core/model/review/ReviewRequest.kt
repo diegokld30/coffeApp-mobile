@@ -30,6 +30,9 @@ data class ReviewRequest(
     val status: ReviewStatus,
     val resolution: ReviewResolution?,
     val sync: SyncStatus,
+    /** Versión del modelo que hizo la lectura. No se guarda: se toma de la captura al
+     *  enviar, para que el servidor la conozca aunque esa captura nunca se haya subido. */
+    val modelVersion: String? = null,
 ) {
     val isResolved: Boolean get() = status == ReviewStatus.RESOLVED
 }
@@ -74,6 +77,9 @@ data class ReviewResolution(
 )
 
 enum class ResolutionType {
+    /** El agrónomo confirma lo que el modelo había dicho. */
+    CONFIRMED,
+
     /** Es una plaga que el modelo ya conoce pero no reconoció. Entra al dataset
      *  como caso difícil, con peso incrementado. */
     FALSE_NEGATIVE,
@@ -91,3 +97,18 @@ enum class ResolutionType {
      *  de calidad necesita ajuste. */
     UNUSABLE,
 }
+
+/**
+ * Lo que el servidor sabe de una solicitud (`GET v1/review-requests/mine`).
+ *
+ * [requestId] es el UUID que generó el teléfono; si el servidor respondiera con
+ * su propio id, el repositorio también lo busca por `serverId`.
+ */
+data class RemoteReviewStatus(
+    val requestId: String,
+    val status: ReviewStatus,
+    val resolution: ReviewResolution?,
+    /** Marca de tiempo del SERVIDOR de la última modificación. Solo con ella se
+     *  avanza el cursor incremental: el reloj del teléfono no es confiable. */
+    val updatedAtEpochMillis: Long?,
+)

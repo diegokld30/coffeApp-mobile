@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ── Toma guiada ────────────────────────────────────────────────────── -->
+    <string name="guiada_paso">Foto %1$d de %2$d</string>
+    <string name="guiada_cerrar">Cancelar solicitud</string>
+
+    <string name="angulo_general_titulo">La planta completa</string>
+    <string name="angulo_general_cuerpo">Aléjate un par de pasos. Que se vea el árbol entero o la rama afectada, de arriba abajo.</string>
+    <string name="angulo_general_camara">Aléjate: que quepa toda la planta</string>
+
+    <string name="angulo_haz_titulo">La hoja por encima</string>
+    <string name="angulo_haz_cuerpo">Toma una hoja afectada por el lado de arriba, el más verde y brillante. Que se vea completa, de la punta al tallo.</string>
+    <string name="angulo_haz_camara">Hoja completa, por el lado de arriba</string>
+
+    <string name="angulo_enves_titulo">La hoja por debajo</string>
+    <string name="angulo_enves_cuerpo">Voltea la misma hoja. Por debajo se ven el polvillo, los hongos y los bichos que por encima no se notan.</string>
+    <string name="angulo_enves_camara">Voltea la hoja y muestra el lado de abajo</string>
+
+    <string name="angulo_detalle_titulo">La mancha de cerca</string>
+    <string name="angulo_detalle_cuerpo">Acércate a la parte más dañada, a un palmo. Espera a que se vea nítida antes de disparar.</string>
+    <string name="angulo_detalle_camara">Acércate a la mancha, a un palmo</string>
+
+    <string name="angulo_original">Tu primera foto</string>
+    <string name="angulo_general_corto">Planta</string>
+    <string name="angulo_haz_corto">Hoja arriba</string>
+    <string name="angulo_enves_corto">Hoja abajo</string>
+    <string name="angulo_detalle_corto">De cerca</string>
+
+    <string name="confirmar_titulo">¿Se ve bien?</string>
+    <string name="confirmar_nitida">Está nítida, no borrosa</string>
+    <string name="confirmar_luz">Tiene buena luz, sin sombra encima</string>
+    <string name="confirmar_encuadre">Se ve lo que se pidió</string>
+    <string name="confirmar_usar">Usar esta foto</string>
+    <string name="confirmar_repetir">Repetir</string>
+    <string name="guardando_foto">Guardando la foto…</string>
+
+    <!-- ── Formulario de solicitud ────────────────────────────────────────── -->
+    <string name="solicitud_titulo">Nueva solicitud</string>
+    <string name="solicitud_atras">Volver</string>
+    <string name="solicitud_hero_titulo">Un agrónomo revisará tu caso</string>
+    <string name="solicitud_hero_cuerpo">Con estas fotos puede ver la planta, la hoja por los dos lados y el daño de cerca.</string>
+    <string name="solicitud_fotos_listas">%1$d fotos listas</string>
+    <string name="solicitud_tus_fotos">Tus fotos</string>
+    <string name="solicitud_toca_repetir">Toca una foto para repetirla</string>
+    <string name="solicitud_cultivo">Cultivo</string>
+    <string name="solicitud_parte">Parte de la planta</string>
+    <string name="solicitud_nota">¿Qué has notado?</string>
+    <string name="solicitud_nota_ayuda">Desde cuándo lo ves, si hay más plantas así, si aplicaste algo…</string>
+    <string name="solicitud_cafetal">Tu cafetal</string>
+    <string name="solicitud_cafetal_valor">%1$s · sembrado hace %2$s</string>
+    <string name="solicitud_enviar">Enviar al agrónomo</string>
+    <string name="solicitud_guardando">Guardando…</string>
+
+    <string name="cultivo_cafe">Café</string>
+    <string name="cultivo_platano">Plátano</string>
+    <string name="cultivo_aguacate">Aguacate</string>
+    <string name="cultivo_cacao">Cacao</string>
+    <string name="cultivo_otro">Otro</string>
+
+    <string name="parte_hoja">Hoja</string>
+    <string name="parte_fruto">Fruto</string>
+    <string name="parte_tallo">Tallo</string>
+    <string name="parte_raiz">Raíz</string>
+    <string name="parte_flor">Flor</string>
+
+    <!-- ── Ingreso ────────────────────────────────────────────────────────── -->
+    <string name="ingreso_paso">Paso %1$d de %2$d</string>
+
+    <string name="ingreso_telefono_titulo">Entra con tu celular</string>
+    <string name="ingreso_telefono_cuerpo">Te mandamos un código por mensaje. Lo usamos solo para que el agrónomo sepa a quién responderle.</string>
+    <string name="ingreso_telefono_campo">Número de celular</string>
+    <string name="ingreso_telefono_prefijo">+57</string>
+    <string name="ingreso_telefono_invalido">Escribe los 10 dígitos de tu celular.</string>
+    <string name="ingreso_enviar_codigo">Enviar código</string>
+
+    <string name="ingreso_codigo_titulo">Escribe el código</string>
+    <string name="ingreso_codigo_cuerpo">Lo mandamos al %1$s. Llega en unos segundos.</string>
+    <string name="ingreso_codigo_campo">Código de 6 números</string>
+    <string name="ingreso_confirmar">Confirmar</string>
+    <string name="ingreso_reenviar">Reenviar código</string>
+    <string name="ingreso_reenviar_en">Reenviar en 0:%1$02d</string>
+    <string name="ingreso_cambiar_numero">Cambiar número</string>
+
+    <string name="ingreso_perfil_titulo">Cuéntanos de tu finca</string>
+    <string name="ingreso_perfil_cuerpo">Solo una vez. Con esto el agrónomo entiende tu caso sin tener que preguntarte.</string>
+    <string name="ingreso_seccion_datos">Tus datos</string>
+    <string name="ingreso_nombre">Nombre completo</string>
+    <string name="ingreso_seccion_ubicacion">Ubicación</string>
+    <string name="ingreso_finca">Nombre de la finca</string>
+    <string name="ingreso_vereda">Vereda</string>
+    <string name="ingreso_municipio">Municipio</string>
+    <string name="ingreso_seccion_cafetal">Tu cafetal</string>
+    <string name="ingreso_variedad">¿Qué variedad sembraste?</string>
+    <string name="ingreso_edad">¿Hace cuánto está sembrado, más o menos?</string>
+    <string name="ingreso_consentimiento_titulo">Usar mis fotos para mejorar la app</string>
+    <string name="ingreso_consentimiento_cuerpo">Tus fotos ayudan a que AgroVisión reconozca más plagas. Puedes cambiarlo cuando quieras.</string>
+    <string name="ingreso_campo_invalido">Revisa este dato</string>
+    <string name="ingreso_elige_opcion">Elige una opción</string>
+    <string name="ingreso_guardar">Guardar y enviar</string>
+
+    <!-- ── Solicitud enviada ──────────────────────────────────────────────── -->
+    <string name="enviada_enviando">Enviando tu solicitud…</string>
+    <string name="enviada_enviando_cuerpo">Estamos subiendo tus fotos. Puedes esperar aquí o seguir usando la app.</string>
+    <string name="enviada_lista">¡Listo! Tu solicitud llegó</string>
+    <string name="enviada_lista_cuerpo">Un agrónomo la va a revisar. Cuando responda, lo verás en Mis solicitudes.</string>
+    <string name="enviada_guardada">Quedó guardada</string>
+    <string name="enviada_guardada_cuerpo">Se envía sola apenas haya señal. No tienes que hacer nada más.</string>
+    <string name="enviada_sesion">Tu sesión se cerró</string>
+    <string name="enviada_sesion_cuerpo">Tu solicitud está guardada. Entra otra vez con tu celular y sale sola.</string>
+    <string name="enviada_ver_solicitudes">Ver mis solicitudes</string>
+    <string name="enviada_inicio">Volver al inicio</string>
+    <string name="enviada_entrar">Entrar de nuevo</string>
+
+    <!-- ── Mis solicitudes ────────────────────────────────────────────────── -->
+    <string name="lista_titulo">Mis solicitudes</string>
+    <string name="lista_subtitulo">Aquí llegan las respuestas del agrónomo.</string>
+    <string name="lista_vacia_titulo">Aún no has enviado solicitudes</string>
+    <string name="lista_vacia_cuerpo">Cuando una foto no se reconozca, toca «Que lo revise un agrónomo».</string>
+    <string name="lista_analizar">Analizar una planta</string>
+    <string name="lista_pendientes">%1$d por enviar</string>
+    <string name="lista_pendientes_cuerpo">Se envían solas cuando haya señal.</string>
+    <string name="lista_enviar_ahora">Enviar ahora</string>
+    <string name="lista_sesion_titulo">Tu sesión se cerró</string>
+    <string name="lista_sesion_cuerpo">Entra con tu celular para que tus solicitudes salgan.</string>
+    <string name="lista_entrar">Entrar</string>
+    <string name="lista_respuesta">Respuesta del agrónomo</string>
+    <string name="lista_nueva">Nueva</string>
+    <string name="lista_fotos">%1$d fotos</string>
+
+    <string name="estado_por_enviar">Por enviar</string>
+    <string name="estado_fallida">No se pudo enviar</string>
+    <string name="estado_enviada">Enviada</string>
+    <string name="estado_asignada">En revisión</string>
+    <string name="estado_respondida">Respondida</string>
+    <string name="estado_descartada">Descartada</string>
+
+    <string name="resolucion_falso_negativo">Es una plaga conocida</string>
+    <string name="resolucion_plaga_nueva">Es una plaga nueva</string>
+    <string name="resolucion_no_plaga">No es una plaga</string>
+    <string name="resolucion_confirmada">El agrónomo confirmó el diagnóstico</string>
+    <string name="resolucion_inutilizable">Las fotos no sirvieron</string>
+
+    <string name="nav_solicitudes">Solicitudes</string>
+</resources>

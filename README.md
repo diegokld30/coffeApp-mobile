@@ -9,6 +9,21 @@ estaba hecha con Ionic + Angular + Capacitor.
 > Estructura creada por **Diego Fernando Calderón Silva**, arquitecto de software.
 > Proyecto libre y abierto.
 
+## Tecnologías
+
+| Área | Tecnología |
+|---|---|
+| Lenguaje | Kotlin 2.1 · JDK 17 |
+| Interfaz | Jetpack Compose (Material 3) · Plus Jakarta Sans e IBM Plex Mono |
+| Arquitectura | Hexagonal multimódulo · MVVM / MVI · Hilt |
+| Datos locales | Room · DataStore |
+| Cámara | CameraX |
+| Visión artificial | LiteRT (TensorFlow Lite) en el dispositivo, sin conexión |
+| Red y sincronización | Retrofit · OkHttp · kotlinx.serialization · WorkManager |
+| Seguridad | Firma Ed25519 de modelos (BouncyCastle) · Play Integrity |
+| Pruebas | JUnit 5 · MockK · Turbine · Robolectric |
+| Build | Gradle (Kotlin DSL) · plugins de convención · Android 5.1+ (API 22) |
+
 ---
 
 ## ⚠️ Antes de tocar `:app`

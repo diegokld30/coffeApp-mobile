@@ -65,7 +65,7 @@ class ModelRegistryRepositoryImpl @Inject constructor(
         buildState(pointer.activeSlot, pointer.lastCheckEpochMillis)
     }
 
-    override suspend fun fetchManifest(): AgroResult<ModelManifest, DomainError> = withContext(io) {
+    override suspend fun fetchManifest(): AgroResult<ModelManifest?, DomainError> = withContext(io) {
         gateway.fetchModelManifest(
             appVersion = appVersion.versionName(),
             deviceId = identity.deviceId(),

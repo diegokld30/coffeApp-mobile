@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -35,6 +34,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import co.agrovision.core.designsystem.theme.AgroColors
 import co.agrovision.core.designsystem.theme.AgroTheme
 
 /**
@@ -72,7 +72,7 @@ fun PrimaryFieldButton(
         modifier = modifier
             .fillMaxWidth()
             .defaultMinSize(minHeight = 64.dp),
-        shape = RoundedCornerShape(AgroTheme.dimensions.cardRadius),
+        shape = MaterialTheme.shapes.large,
         contentPadding = PaddingValues(horizontal = 24.dp, vertical = 16.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = MaterialTheme.colorScheme.primary,
@@ -106,8 +106,15 @@ fun SecondaryFieldButton(
         enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = AgroTheme.dimensions.minTouchTarget),
-        shape = RoundedCornerShape(AgroTheme.dimensions.cardRadius),
+            .defaultMinSize(minHeight = maxOf(56.dp, AgroTheme.dimensions.minTouchTarget)),
+        shape = MaterialTheme.shapes.large,
+        border = androidx.compose.foundation.BorderStroke(
+            width = AgroTheme.dimensions.borderWidth * 1.5f,
+            color = MaterialTheme.colorScheme.outline,
+        ),
+        colors = ButtonDefaults.outlinedButtonColors(
+            contentColor = MaterialTheme.colorScheme.onSurface,
+        ),
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -184,19 +191,32 @@ fun EmptyState(
             .fillMaxWidth()
             .padding(AgroTheme.dimensions.gutterWide),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(AgroTheme.dimensions.gutter),
+        // Centrado vertical: cuando ocupa toda la pantalla, el mensaje queda
+        // donde cae la mirada y no pegado arriba.
+        verticalArrangement = Arrangement.spacedBy(
+            AgroTheme.dimensions.gutter,
+            Alignment.CenterVertically,
+        ),
     ) {
         icon?.let {
-            Icon(
-                imageVector = it,
-                contentDescription = null,
-                modifier = Modifier.size(48.dp),
-                tint = AgroTheme.semantic.mutedText,
-            )
+            Box(
+                modifier = Modifier
+                    .size(88.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.secondaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = it,
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
         }
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.headlineMedium,
             textAlign = TextAlign.Center,
         )
         Text(
@@ -222,16 +242,19 @@ fun StatusPill(
         StatusTone.WARNING -> AgroTheme.semantic.severity.level2
         StatusTone.CRITICAL -> AgroTheme.semantic.severity.level4
     }
+    // Los tonos claros de la rampa llevan siempre tinta oscura, sea cual sea
+    // el tema: texto claro sobre amarillo o verde pálido no se lee.
     val content = when (tone) {
-        StatusTone.CRITICAL -> MaterialTheme.colorScheme.onError
-        else -> AgroTheme.semantic.dataText
+        StatusTone.NEUTRAL -> AgroTheme.semantic.dataText
+        StatusTone.CRITICAL -> Color.White
+        StatusTone.POSITIVE, StatusTone.WARNING -> AgroColors.Bench900
     }
 
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(CircleShape)
             .background(background)
-            .padding(horizontal = 8.dp, vertical = 4.dp),
+            .padding(horizontal = 10.dp, vertical = 4.dp),
     ) {
         androidx.compose.runtime.CompositionLocalProvider(LocalContentColor provides content) {
             Text(text = text, style = MaterialTheme.typography.labelSmall, color = content)

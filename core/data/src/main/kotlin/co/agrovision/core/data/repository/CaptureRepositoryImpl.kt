@@ -70,8 +70,17 @@ class CaptureRepositoryImpl @Inject constructor(
         serverId: String?,
         error: String?,
         nextAttemptAtEpochMillis: Long?,
+        countsAsAttempt: Boolean,
     ) = withContext(io) {
-        dao.updateSyncState(id, state.name, serverId, error, nextAttemptAtEpochMillis)
+        dao.updateSyncState(id, state.name, serverId, error, nextAttemptAtEpochMillis, countsAsAttempt)
+    }
+
+    override suspend fun requeueStuckUploads() {
+        withContext(io) { dao.requeueStuckUploads() }
+    }
+
+    override suspend fun skipUnsent() {
+        withContext(io) { dao.skipUnsent() }
     }
 
     override suspend fun confirmPrediction(id: String): AgroResult<Unit, DomainError> =

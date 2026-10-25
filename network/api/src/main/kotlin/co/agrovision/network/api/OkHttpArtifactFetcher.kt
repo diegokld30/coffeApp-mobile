@@ -33,6 +33,7 @@ class OkHttpArtifactFetcher @Inject constructor(
     override suspend fun fetch(
         url: String,
         sink: OutputStream,
+        maxBytes: Long,
         onProgress: (bytesRead: Long, totalBytes: Long) -> Unit,
     ): AgroResult<Long, DomainError> = withContext(io) {
         try {
@@ -48,6 +49,11 @@ class OkHttpArtifactFetcher @Inject constructor(
                     )
 
                 val total = body.contentLength()
+                if (total > maxBytes) {
+                    return@withContext AgroResult.failure(
+                        DomainError.RemoteFailure(response.code, "el archivo supera el tamaño declarado")
+                    )
+                }
                 var read = 0L
                 val buffer = ByteArray(BUFFER_BYTES)
 
@@ -60,8 +66,14 @@ class OkHttpArtifactFetcher @Inject constructor(
 
                         val count = input.read(buffer)
                         if (count < 0) break
-                        sink.write(buffer, 0, count)
                         read += count
+                        // Sin Content-Length (transferencia por trozos) el tope se vigila aquí
+                        if (read > maxBytes) {
+                            return@withContext AgroResult.failure(
+                                DomainError.RemoteFailure(response.code, "el archivo supera el tamaño declarado")
+                            )
+                        }
+                        sink.write(buffer, 0, count)
                         onProgress(read, total)
                     }
                 }

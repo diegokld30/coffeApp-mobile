@@ -66,7 +66,7 @@ interface CaptureDao {
             server_id = COALESCE(:serverId, server_id),
             last_sync_error = :error,
             next_attempt_at = :nextAttemptAt,
-            sync_attempts = CASE WHEN :state = 'PENDING' OR :state = 'FAILED'
+            sync_attempts = CASE WHEN :countsAsAttempt AND (:state = 'PENDING' OR :state = 'FAILED')
                                  THEN sync_attempts + 1 ELSE sync_attempts END
         WHERE id = :id
         """
@@ -77,10 +77,30 @@ interface CaptureDao {
         serverId: String?,
         error: String?,
         nextAttemptAt: Long?,
+        countsAsAttempt: Boolean = true,
     )
 
-    @Query("UPDATE captures SET user_confirmed = 1 WHERE id = :id")
+    /**
+     * Confirmar también reencola la fila si ya estaba subida: el servidor tiene la
+     * captura pero no la confirmación. Al reenviarla llega como duplicada y el
+     * servidor actualiza la confirmación de la que ya guardó.
+     */
+    @Query(
+        """
+        UPDATE captures
+        SET user_confirmed = 1,
+            sync_state = CASE WHEN sync_state = 'UPLOADED' THEN 'PENDING' ELSE sync_state END,
+            next_attempt_at = CASE WHEN sync_state = 'UPLOADED' THEN NULL ELSE next_attempt_at END
+        WHERE id = :id
+        """
+    )
     suspend fun confirm(id: String): Int
+
+    @Query("UPDATE captures SET sync_state = 'PENDING' WHERE sync_state = 'UPLOADING'")
+    suspend fun requeueStuckUploads(): Int
+
+    @Query("UPDATE captures SET sync_state = 'SKIPPED' WHERE sync_state IN ('PENDING', 'UPLOADING', 'FAILED')")
+    suspend fun skipUnsent(): Int
 
     /**
      * Corregir reencola la fila aunque ya estuviera subida: el servidor tiene

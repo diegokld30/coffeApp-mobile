@@ -68,6 +68,67 @@ interface ReviewDao {
         insertImages(images)
     }
 
+    /** Mismo criterio que `CaptureDao.updateSyncState`: cada paso a PENDING o
+     *  FAILED cuenta como intento, para que el backoff crezca. */
+    @Query(
+        """
+        UPDATE review_requests SET
+            sync_state = :state,
+            server_id = COALESCE(:serverId, server_id),
+            last_sync_error = :error,
+            next_attempt_at = :nextAttemptAt,
+            sync_attempts = CASE WHEN :state = 'PENDING' OR :state = 'FAILED'
+                                 THEN sync_attempts + 1 ELSE sync_attempts END,
+            status = COALESCE(:status, status)
+        WHERE id = :id
+        """
+    )
+    suspend fun updateSyncState(
+        id: String,
+        state: String,
+        serverId: String?,
+        error: String?,
+        nextAttemptAt: Long?,
+        status: String?,
+    )
+
+    /**
+     * Aplica el estado que reporta el servidor. Se busca también por `server_id`
+     * por si el servidor identifica la solicitud con su propio id.
+     *
+     * `resolution_read` vuelve a 0 solo si la resolución es nueva o cambió. SQLite
+     * evalúa cada expresión del SET contra la fila ANTERIOR, así que la
+     * comparación ve la resolución que había antes de esta escritura. Sin esto,
+     * cada sincronización volvería a marcar como no leída una respuesta que el
+     * productor ya vio.
+     */
+    @Query(
+        """
+        UPDATE review_requests SET
+            resolution_read = CASE
+                WHEN :resolutionType IS NOT NULL AND (
+                    resolution_type IS NOT :resolutionType
+                    OR resolved_pest_id IS NOT :resolvedPestId
+                    OR agronomist_response IS NOT :agronomistResponse
+                    OR resolved_at IS NOT :resolvedAt)
+                THEN 0 ELSE resolution_read END,
+            status = :status,
+            resolution_type = :resolutionType,
+            resolved_pest_id = :resolvedPestId,
+            agronomist_response = :agronomistResponse,
+            resolved_at = :resolvedAt
+        WHERE id = :id OR server_id = :id
+        """
+    )
+    suspend fun applyRemoteStatus(
+        id: String,
+        status: String,
+        resolutionType: String?,
+        resolvedPestId: String?,
+        agronomistResponse: String?,
+        resolvedAt: Long?,
+    ): Int
+
     @Query("UPDATE review_requests SET resolution_read = 1 WHERE id = :id")
     suspend fun markResolutionRead(id: String)
 

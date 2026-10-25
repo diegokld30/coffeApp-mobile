@@ -9,6 +9,7 @@ import co.agrovision.core.common.UiText
 import co.agrovision.core.model.DomainError
 import co.agrovision.core.model.capture.Capture
 import co.agrovision.core.model.port.PestClassifier
+import co.agrovision.core.model.port.TelemetryRecorder
 import co.agrovision.core.model.scan.ClassificationResult
 import co.agrovision.core.model.scan.RgbImage
 import co.agrovision.core.model.usecase.ClassifyImageUseCase
@@ -38,6 +39,7 @@ class ScanViewModel @Inject constructor(
     private val confirmPrediction: ConfirmPredictionUseCase,
     private val correctPrediction: CorrectPredictionUseCase,
     private val classifier: PestClassifier,
+    private val telemetry: TelemetryRecorder,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<ScanUiState>(ScanUiState.Idle)
@@ -97,12 +99,17 @@ class ScanViewModel @Inject constructor(
                         latencyMillis = 0L,
                     )
                     else -> {
+                        Log.w(TAG, "el análisis falló: ${result.error}")
                         _state.value = result.error.toErrorState()
                         return@launch
                     }
                 }
                 is AgroResult.Success -> result.value
             }
+
+            // Cada escaneo cuenta para saber cómo se porta el modelo en campo, haya o no
+            // consentimiento de entrenamiento: la métrica es anónima y no lleva la imagen.
+            recordScan(classification)
 
             // Una imagen rechazada por calidad NO se persiste: no aporta nada al
             // dataset y ocuparía espacio en un teléfono que suele estar lleno.
@@ -135,6 +142,30 @@ class ScanViewModel @Inject constructor(
                 is AgroResult.Success -> _state.value = classification.toUiState(saved.value)
             }
         }
+    }
+
+    private suspend fun recordScan(result: ClassificationResult) {
+        val (version, confidence, latency) = when (result) {
+            is ClassificationResult.Identified -> Triple(result.modelVersion, result.confidence, result.latencyMillis)
+            is ClassificationResult.NotAPest -> Triple(result.modelVersion, result.confidence, result.latencyMillis)
+            is ClassificationResult.Uncertain -> Triple(
+                result.modelVersion,
+                result.candidates.firstOrNull()?.probability,
+                result.latencyMillis,
+            )
+            is ClassificationResult.OutOfDomain -> Triple(result.modelVersion, null, result.latencyMillis)
+            is ClassificationResult.QualityRejected -> Triple(classifier.activeModelVersion(), null, 0L)
+        }
+        // Sin modelo no hay versión que atribuir: el servidor exige una, así que no se manda
+        if (version == null || version == NO_MODEL_VERSION) return
+
+        telemetry.recordScan(
+            modelVersion = version,
+            outcome = result.outcome.name,
+            confidence = confidence,
+            latencyMillis = latency,
+            delegate = "",
+        )
     }
 
     private fun confirm(captureId: String) {

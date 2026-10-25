@@ -1,6 +1,7 @@
 // Importado explícitamente: dentro de un script Kotlin DSL, `java` se resuelve a
 // la extensión `JavaPluginExtension` del proyecto y tapa el paquete `java.*`.
 // Sin este import, `java.util.Properties()` no compila.
+import java.util.Base64
 import java.util.Properties
 
 plugins {
@@ -87,6 +88,13 @@ android {
             applicationIdSuffix = ".debug"
             versionNameSuffix = "-debug"
             isMinifyEnabled = false
+            // Backend local. `network_security_config.xml` ya permite tráfico en
+            // claro hacia 10.0.2.2 y localhost.
+            buildConfigField(
+                "String",
+                "API_BASE_URL",
+                "\"${providers.gradleProperty("agrovision.api.baseUrlDebug").get()}\"",
+            )
         }
 
         release {
@@ -125,7 +133,8 @@ dependencies {
 
     implementation(projects.feature.scan)
     implementation(projects.feature.catalog)
-    // Pendientes: review, history, settings.
+    implementation(projects.feature.review)
+    // Pendientes: history, settings.
     // Sus rutas ya existen en AgroVisionDestinations; falta la pantalla.
 
     implementation(projects.ml.inference)
@@ -160,6 +169,68 @@ dependencies {
     androidTestImplementation(libs.hilt.testing)
     kspAndroidTest(libs.hilt.compiler)
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Comprobación de la clave pública de firma de modelos
+//
+// `Ed25519SignatureVerifier.verify` devuelve `false` ante cualquier problema y
+// nunca lanza. Es lo correcto —un fallo de verificación no debe tumbar la app—
+// pero significa que con el marcador de posición puesto, TODOS los modelos se
+// rechazan **en silencio**: el productor nunca recibe una actualización y el
+// único síntoma es una línea de log que nadie está mirando.
+//
+// Se comprueba aquí, en el build, para que el fallo llegue donde se comete
+// (§3.1, «fallar rápido y visible»). Solo bloquea release: en debug se trabaja
+// sin clave real todos los días.
+// ─────────────────────────────────────────────────────────────────────────────
+val verifyModelSigningKey = tasks.register("verifyModelSigningKey") {
+    group = "verification"
+    description = "Comprueba que la clave pública de firma de modelos sea real."
+
+    val clave = providers.gradleProperty("agrovision.model.signingPublicKeyBase64")
+
+    doLast {
+        val valor = clave.get()
+
+        if (valor.startsWith("TODO")) {
+            throw GradleException(
+                """
+                |La clave pública de firma de modelos sigue siendo el marcador de posición.
+                |
+                |Sin una clave real, la app RECHAZA todos los modelos que descargue —falla
+                |cerrado, que es lo correcto, pero sin ningún síntoma visible—.
+                |
+                |Genérala con el pipeline y pega la línea que imprime:
+                |
+                |    agrovision-ml keys
+                |
+                |⚠️ Si ya hay modelos publicados, NO generes una clave nueva: los teléfonos
+                |verifican contra la que llevan embebida y rechazarían las actualizaciones.
+                """.trimMargin()
+            )
+        }
+
+        // Ed25519 en crudo son 32 bytes, que en Base64 son 44 caracteres. Un
+        // PEM o un DER pasarían la comprobación anterior y fallarían en el
+        // teléfono, donde BouncyCastle construye los parámetros sobre los bytes
+        // crudos y no sobre una envoltura.
+        val bytes = runCatching { Base64.getDecoder().decode(valor) }.getOrElse {
+            throw GradleException(
+                "La clave pública no es Base64 válido: «$valor»"
+            )
+        }
+        if (bytes.size != 32) {
+            throw GradleException(
+                "La clave pública tiene ${bytes.size} bytes y Ed25519 son 32. " +
+                    "Parece un PEM o un DER en lugar de la clave cruda; usa la línea " +
+                    "que imprime `agrovision-ml keys`."
+            )
+        }
+    }
+}
+
+tasks.matching { it.name == "bundleRelease" || it.name == "assembleRelease" }
+    .configureEach { dependsOn(verifyModelSigningKey) }
 
 // Firebase Cloud Messaging solo si hay configuración. Mantiene el proyecto
 // compilable para quien clona sin credenciales, que es el caso de cualquiera

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.MaterialTheme
@@ -39,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -74,6 +76,9 @@ fun CameraCapture(
     guidance: FramingGuidance,
     onCapture: (RgbImage) -> Unit,
     modifier: Modifier = Modifier,
+    /** Reemplaza la guía de encuadre. La usa la toma guiada de una solicitud,
+     *  donde cada foto pide algo distinto (planta entera, envés, detalle…). */
+    hint: String? = null,
 ) {
     val context = LocalContext.current
     var hasPermission by remember { mutableStateOf(context.hasCameraPermission()) }
@@ -109,12 +114,13 @@ fun CameraCapture(
         return
     }
 
-    CameraSurface(guidance = guidance, onCapture = onCapture, modifier = modifier)
+    CameraSurface(guidance = guidance, hint = hint, onCapture = onCapture, modifier = modifier)
 }
 
 @Composable
 private fun CameraSurface(
     guidance: FramingGuidance,
+    hint: String?,
     onCapture: (RgbImage) -> Unit,
     modifier: Modifier,
 ) {
@@ -181,7 +187,7 @@ private fun CameraSurface(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            GuidanceLabel(guidance)
+            GuidanceLabel(guidance, hint)
 
             ShutterButton(
                 enabled = !capturing,
@@ -228,7 +234,7 @@ private fun FramingGuide(modifier: Modifier = Modifier) {
         val left = (size.width - side) / 2f
         val top = (size.height - side) / 2f
         val corner = side * CORNER_FRACTION
-        val stroke = Stroke(width = 4f)
+        val stroke = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round)
 
         listOf(
             // esquina superior izquierda
@@ -244,7 +250,7 @@ private fun FramingGuide(modifier: Modifier = Modifier) {
             ),
         ).forEach { (origin, ends) ->
             ends.forEach { end ->
-                drawLine(Color.White, origin, end, strokeWidth = stroke.width)
+                drawLine(Color.White, origin, end, strokeWidth = stroke.width, cap = stroke.cap)
             }
         }
 
@@ -259,8 +265,8 @@ private fun FramingGuide(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun GuidanceLabel(guidance: FramingGuidance) {
-    val message = stringResource(
+private fun GuidanceLabel(guidance: FramingGuidance, hint: String?) {
+    val message = hint ?: stringResource(
         when (guidance) {
             FramingGuidance.ACERCATE -> R.string.guia_acercate
             FramingGuidance.ALEJATE -> R.string.guia_alejate
@@ -277,9 +283,9 @@ private fun GuidanceLabel(guidance: FramingGuidance) {
         textAlign = TextAlign.Center,
         modifier = Modifier
             .fillMaxWidth(0.85f)
-            .clip(MaterialTheme.shapes.small)
+            .clip(CircleShape)
             .background(Color.Black.copy(alpha = 0.55f))
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 20.dp, vertical = 12.dp),
     )
 }
 

@@ -83,11 +83,21 @@ data class CalibrationParams(
 ) {
     val embeddingDim: Int get() = classCentroids.firstOrNull()?.size ?: 0
 
-    fun isConsistentWith(classCount: Int): Boolean =
-        classCentroids.size == classCount &&
+    /**
+     * Modelo de una sola salida (solo clasificación), como el que sale tal cual del
+     * entrenamiento: sin embedding no hay centroides ni matriz de precisión, y la
+     * compuerta 2 (fuera de dominio) no existe. Solo quedan la temperatura y la
+     * compuerta 3 (confianza y margen).
+     */
+    val isSimple: Boolean get() = classCentroids.isEmpty() && precisionMatrix.isEmpty()
+
+    fun isConsistentWith(classCount: Int): Boolean {
+        if (temperature <= 0f) return false
+        if (isSimple) return true
+        return classCentroids.size == classCount &&
             embeddingDim > 0 &&
-            precisionMatrix.size == embeddingDim * embeddingDim &&
-            temperature > 0f
+            precisionMatrix.size == embeddingDim * embeddingDim
+    }
 }
 
 /**

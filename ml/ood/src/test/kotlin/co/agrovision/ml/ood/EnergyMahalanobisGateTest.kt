@@ -267,4 +267,31 @@ class EnergyMahalanobisGateTest {
             EnergyMahalanobisGate(calibration(temperature = 0f), labels)
         }
     }
+
+    @Test
+    @DisplayName("un modelo simple, sin embedding, decide solo por confianza y margen")
+    fun simpleModelUsesOnlyTheConfidenceGate() {
+        val simple = CalibrationParams(
+            temperature = 1f,
+            confidenceThreshold = 0.55f,
+            marginThreshold = 0.10f,
+            oodThreshold = 1e9f,
+            energyWeight = 0f,
+            classCentroids = emptyList(),
+            precisionMatrix = floatArrayOf(),
+            energyMean = 0f,
+            energyStdDev = 1f,
+        )
+        val gate = EnergyMahalanobisGate(simple, labels)
+
+        // La salida del modelo son probabilidades; la app las pasa a logits con ln
+        fun logitsOf(vararg probabilities: Float) = FloatArray(probabilities.size) { kotlin.math.ln(probabilities[it]) }
+
+        val sure = gate.evaluate(inference(logitsOf(0.90f, 0.07f, 0.03f), floatArrayOf()))
+        assertInstanceOf(GateDecision.InDomain::class.java, sure)
+        assertTrue(abs((sure as GateDecision.InDomain).calibratedConfidence - 0.90f) < 1e-4f)
+
+        val unsure = gate.evaluate(inference(logitsOf(0.40f, 0.35f, 0.25f), floatArrayOf()))
+        assertInstanceOf(GateDecision.Uncertain::class.java, unsure)
+    }
 }

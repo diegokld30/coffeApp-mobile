@@ -6,13 +6,18 @@ import co.agrovision.core.model.capture.Capture
 import co.agrovision.core.model.capture.GeoPoint
 import co.agrovision.core.model.capture.SyncState
 import co.agrovision.core.model.identity.Account
+import co.agrovision.core.model.identity.CoffeeVariety
+import co.agrovision.core.model.identity.PlantingAge
+import co.agrovision.core.model.identity.ProducerProfile
 import co.agrovision.core.model.mlmodel.CalibrationParams
 import co.agrovision.core.model.mlmodel.InstalledModel
 import co.agrovision.core.model.mlmodel.ModelManifest
 import co.agrovision.core.model.mlmodel.ModelRegistryState
 import co.agrovision.core.model.mlmodel.ModelSlot
 import co.agrovision.core.model.pest.PestTaxon
+import co.agrovision.core.model.review.RemoteReviewStatus
 import co.agrovision.core.model.review.ReviewRequest
+import co.agrovision.core.model.review.ReviewStatus
 import co.agrovision.core.model.scan.RgbImage
 import co.agrovision.core.model.settings.UserPreferences
 import kotlinx.coroutines.flow.Flow
@@ -46,13 +51,23 @@ interface CaptureRepository {
 
     suspend fun nextBatchToUpload(limit: Int, nowEpochMillis: Long): List<Capture>
 
+    /** `countsAsAttempt = false` devuelve la fila a la cola sin gastar un
+     *  reintento: para fallos que no son de la captura, como la sesión vencida. */
     suspend fun updateSyncState(
         id: String,
         state: SyncState,
         serverId: String? = null,
         error: String? = null,
         nextAttemptAtEpochMillis: Long? = null,
+        countsAsAttempt: Boolean = true,
     )
+
+    /** Devuelve a la cola lo que quedó en UPLOADING porque el proceso murió a
+     *  mitad del envío: nadie más lo volvería a recoger. */
+    suspend fun requeueStuckUploads()
+
+    /** El productor revocó el consentimiento: lo que no se subió ya no se sube. */
+    suspend fun skipUnsent()
 
     suspend fun confirmPrediction(id: String): AgroResult<Unit, DomainError>
 
@@ -95,7 +110,28 @@ interface ReviewRequestRepository {
 
     suspend fun nextBatchToUpload(limit: Int, nowEpochMillis: Long): List<ReviewRequest>
 
-    suspend fun applyResolution(id: String, request: ReviewRequest)
+    /** `status`, si viene, reemplaza el estado de la solicitud en la misma
+     *  escritura: «subida» y «enviada» no pueden quedar desincronizadas. */
+    suspend fun updateSyncState(
+        id: String,
+        state: SyncState,
+        serverId: String? = null,
+        error: String? = null,
+        nextAttemptAtEpochMillis: Long? = null,
+        status: ReviewStatus? = null,
+    )
+
+    /**
+     * Fusiona el estado del servidor sobre las filas locales. Una resolución
+     * nueva o cambiada queda NO leída; una que ya estaba no vuelve a encender el
+     * distintivo en cada sincronización. Devuelve cuántas filas se tocaron.
+     */
+    suspend fun mergeRemoteStatuses(statuses: List<RemoteReviewStatus>): Int
+
+    /** Cursor de `GET v1/review-requests/mine`, en hora del servidor. */
+    suspend fun statusCursor(): Long?
+
+    suspend fun updateStatusCursor(sinceEpochMillis: Long)
 
     suspend fun markResolutionRead(id: String)
 }
@@ -146,11 +182,38 @@ interface AccountRepository {
 
     suspend fun requestOtp(phone: String): AgroResult<Unit, DomainError>
 
+    /** Guarda el JWT y deja la cuenta en T1; si el servidor ya tiene su perfil,
+     *  pasa directamente a T2. */
     suspend fun verifyOtp(phone: String, code: String): AgroResult<Account, DomainError>
 
+    /**
+     * Relee `productores/me`. Con perfil la cuenta queda en T2 —el backend lo
+     * exige para aceptar solicitudes y no hay otra validación—; sin perfil, T1.
+     */
     suspend fun refreshValidationStatus(): AgroResult<Account, DomainError>
 
-    suspend fun setTrainingConsent(granted: Boolean)
+    /**
+     * Registra el perfil. Al aceptarlo el servidor, la cuenta pasa a T2 y la cola
+     * de solicitudes empieza a subir.
+     *
+     * El backend no permite editarlo: si ya existía, se toma el que tiene el
+     * servidor y no el que se envió.
+     */
+    suspend fun saveProducerProfile(profile: ProducerProfile): AgroResult<Account, DomainError>
+
+    /**
+     * El servidor rechazó el JWT (401): se borra y la cuenta queda en «requiere
+     * iniciar sesión». Nivel, perfil y cola se conservan; la cola se reanuda al
+     * volver a entrar con OTP.
+     */
+    suspend fun markSessionExpired()
+
+    /** Variedad y edad del cafetal. Solo locales: ver `withFarmContext`. */
+    suspend fun updateFarmDetails(variety: CoffeeVariety, age: PlantingAge)
+
+    /** La revocación tiene que llegar al servidor: si falla, se devuelve el error
+     *  para que la interfaz no la dé por hecha. */
+    suspend fun setTrainingConsent(granted: Boolean): AgroResult<Unit, DomainError>
 }
 
 interface ModelRegistryRepository {
@@ -160,8 +223,9 @@ interface ModelRegistryRepository {
     suspend fun currentState(): ModelRegistryState
 
     /** Consulta el manifiesto. Es la ÚNICA llamada de red del subsistema de
-     *  modelos, y vive fuera de los módulos aislados a propósito. */
-    suspend fun fetchManifest(): AgroResult<ModelManifest, DomainError>
+     *  modelos, y vive fuera de los módulos aislados a propósito.
+     *  `null` si el servidor aún no ha publicado ningún modelo (204). */
+    suspend fun fetchManifest(): AgroResult<ModelManifest?, DomainError>
 
     /**
      * Descarga, verifica SHA-256 en flujo, verifica firma Ed25519, escribe en la

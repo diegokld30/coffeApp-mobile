@@ -1,9 +1,12 @@
 package co.agrovision
 
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -40,20 +43,35 @@ class MainActivity : ComponentActivity() {
         // en dispositivos lentos, que son la mayoría del parque objetivo.
         installSplashScreen()
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT),
+        )
 
         setContent {
             val appearanceViewModel: AppearanceViewModel = hiltViewModel()
             val preferences by appearanceViewModel.preferences.collectAsStateWithLifecycle()
 
-            AgroTheme(appearance = preferences.resolveAppearance(isSystemDark())) {
+            val appearance = preferences.resolveAppearance()
+
+            // Los iconos de la barra de estado siguen a la apariencia de la
+            // app, no a la del sistema: con el tema oscuro forzado y el
+            // teléfono en claro, quedarían negros sobre negro.
+            DisposableEffect(appearance) {
+                val style = if (appearance == AgroAppearance.OUTDOOR) {
+                    SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+                } else {
+                    SystemBarStyle.dark(Color.TRANSPARENT)
+                }
+                enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+                onDispose { }
+            }
+
+            AgroTheme(appearance = appearance) {
                 AgroVisionNavHost()
             }
         }
     }
-
-    @androidx.compose.runtime.Composable
-    private fun isSystemDark(): Boolean = androidx.compose.foundation.isSystemInDarkTheme()
 }
 
 /**
@@ -63,13 +81,15 @@ class MainActivity : ComponentActivity() {
  * activó, es porque está a pleno sol, y ahí el tema oscuro es exactamente lo
  * contrario de lo que hace falta.
  *
+ * Fuera del modo exterior, la app es siempre oscura: el oscuro premium es la
+ * identidad de la marca, no una preferencia del sistema. El tema claro sigue
+ * definido en `AgroTheme` por si se quiere ofrecer como opción en Ajustes.
+ *
  * `AUTO` queda pendiente de conectar al sensor de luz ambiental; mientras tanto
- * se comporta como el sistema.
+ * se comporta como `NUNCA`.
  */
-internal fun co.agrovision.core.model.settings.UserPreferences.resolveAppearance(
-    systemDark: Boolean,
-): AgroAppearance = when (outdoorMode) {
-    OutdoorMode.SIEMPRE -> AgroAppearance.OUTDOOR
-    OutdoorMode.NUNCA -> if (systemDark) AgroAppearance.DARK else AgroAppearance.LIGHT
-    OutdoorMode.AUTO -> if (systemDark) AgroAppearance.DARK else AgroAppearance.LIGHT
-}
+internal fun co.agrovision.core.model.settings.UserPreferences.resolveAppearance(): AgroAppearance =
+    when (outdoorMode) {
+        OutdoorMode.SIEMPRE -> AgroAppearance.OUTDOOR
+        OutdoorMode.NUNCA, OutdoorMode.AUTO -> AgroAppearance.DARK
+    }

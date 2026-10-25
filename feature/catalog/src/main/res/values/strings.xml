@@ -8,6 +8,14 @@
     <string name="catalogo_sin_resultados_cuerpo">Prueba con el nombre común, el científico o como lo llaman en tu vereda.</string>
     <string name="catalogo_cuenta">%1$d fichas</string>
 
+    <!-- Filtros por tipo. En plural: filtran un conjunto. -->
+    <string name="filtro_todas">Todas</string>
+    <string name="filtro_enfermedades">Enfermedades</string>
+    <string name="filtro_plagas">Plagas</string>
+    <string name="filtro_deficiencias">Deficiencias</string>
+    <string name="filtro_otros">Otros</string>
+    <string name="filtro_sanas">Sanas</string>
+
     <string name="ficha_sintomas">Cómo se ve</string>
     <string name="ficha_organos">Dónde aparece</string>
     <string name="ficha_manejo">Qué hacer</string>

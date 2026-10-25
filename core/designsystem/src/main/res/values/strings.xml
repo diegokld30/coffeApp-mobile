@@ -37,6 +37,7 @@
     <!-- ── Cola de subida ─────────────────────────────────────────────────── -->
     <string name="cola_necesita_cuenta">Tienes %1$s registros guardados. Se envían cuando crees tu cuenta.</string>
     <string name="cola_pendiente_validacion">Tienes %1$s registros guardados. Se envían apenas validemos tu cuenta.</string>
+    <string name="cola_requiere_sesion">Tu sesión se cerró. Entra otra vez con tu celular y tus solicitudes se envían solas.</string>
     <string name="cola_sin_conexion">Sin señal. Todo queda guardado y se envía solo cuando haya.</string>
     <string name="cola_completada">Listo, ya se enviaron tus registros.</string>
 
@@ -44,6 +45,12 @@
     <string name="solicitud_faltan_fotos">Necesito al menos %1$s fotos desde ángulos distintos.</string>
     <string name="solicitud_creada">Solicitud guardada. Se envía apenas haya señal.</string>
     <string name="solicitud_resuelta">Un agrónomo respondió tu solicitud.</string>
+
+    <!-- ── Cuenta ─────────────────────────────────────────────────────────── -->
+    <string name="cuenta_sin_sesion">Primero ingresa con tu número de celular.</string>
+    <string name="cuenta_otp_muy_pronto">Espera unos segundos antes de pedir otro código.</string>
+    <string name="cuenta_otp_invalido">El código no coincide o ya venció. Pide uno nuevo.</string>
+    <string name="cuenta_perfil_invalido">Revisa los datos de tu finca: hay campos incompletos.</string>
 
     <!-- ── Modelo ─────────────────────────────────────────────────────────── -->
     <string name="modelo_actualizacion_disponible">Hay una versión nueva del reconocedor.</string>

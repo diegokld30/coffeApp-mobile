@@ -76,6 +76,8 @@ data class ReviewRequestDto(
     val createdAt: Long,
     val location: LocationDto? = null,
     val images: List<ReviewImageDto>,
+    /** Versión del modelo que hizo la lectura: el servidor la usa si no tiene la captura. */
+    val modelVersion: String? = null,
 )
 
 @Serializable
@@ -86,7 +88,12 @@ data class ReviewImageDto(
 )
 
 @Serializable
-data class UploadBatchResponseDto(val results: List<UploadResultDto>)
+data class UploadBatchResponseDto(
+    val results: List<UploadResultDto>,
+    /** Por si el servidor devuelve las URL de fotos a nivel de lote y no dentro
+     *  de cada resultado. Los `imageId` son UUID, así que no hay ambigüedad. */
+    val imageUploads: List<ImageUploadDto> = emptyList(),
+)
 
 @Serializable
 data class UploadResultDto(
@@ -95,8 +102,17 @@ data class UploadResultDto(
     /** `accepted` | `duplicate` | `rejected`. `duplicate` NO es un error: es la
      *  idempotencia funcionando tras una respuesta perdida. */
     val status: String,
+    /** Capturas: una URL. En solicitudes de revisión llega `null` y las URL
+     *  vienen por foto en [imageUploads]. */
     val uploadUrl: String? = null,
     val reason: String? = null,
+    val imageUploads: List<ImageUploadDto> = emptyList(),
+)
+
+@Serializable
+data class ImageUploadDto(
+    val imageId: String,
+    val uploadUrl: String? = null,
 )
 
 @Serializable
@@ -152,12 +168,60 @@ data class ApprovalDto(
 @Serializable
 data class ReviewResolutionDto(
     val id: String,
+    /** `PENDING_UPLOAD` | `SUBMITTED` | `ASSIGNED` | `RESOLVED` | `DISCARDED`. */
     val status: String,
     val resolutionType: String? = null,
     val resolvedPestId: String? = null,
     val agronomistResponse: String? = null,
     val resolvedAt: Long? = null,
+    /** Hora del servidor de la última modificación. Si no llega, el cliente no
+     *  avanza el cursor y pide la lista completa. */
+    val updatedAt: Long? = null,
+)
+
+// ── Identidad ────────────────────────────────────────────────────────────────
+
+@Serializable
+data class OtpRequestDto(
+    val telefono: String,
+    val rolSeleccionado: String,
+)
+
+@Serializable
+data class OtpVerificationDto(
+    val telefono: String,
+    val codigo: String,
+    val rolSeleccionado: String,
+)
+
+@Serializable
+data class OtpVerificationResponseDto(val accessToken: String)
+
+/** Cuerpo EXACTO de `POST productores/me`: el backend rechaza campos de más. */
+@Serializable
+data class ProducerProfileRequestDto(
+    val nombre: String,
+    val finca: String,
+    val vereda: String,
+    val municipio: String,
+    val consentimiento: Boolean,
+)
+
+/** Respuesta de `GET productores/me`. Todo opcional: aquí sí puede venir más de
+ *  lo que se envió (ids, fechas) y un campo ausente no debe romper el inicio de
+ *  sesión. */
+@Serializable
+data class ProducerProfileResponseDto(
+    val nombre: String? = null,
+    val finca: String? = null,
+    val vereda: String? = null,
+    val municipio: String? = null,
+    val consentimiento: Boolean? = null,
 )
 
 @Serializable
 data class PushTokenDto(val token: String, val deviceId: String)
+
+/** `PATCH productores/me/consentimiento/revocar` exige confirmación explícita. */
+@Serializable
+data class ConsentRevocationDto(val confirmacion: Boolean)

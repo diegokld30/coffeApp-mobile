@@ -56,7 +56,7 @@ include(":core:data")           // Implementaciones de repositorio (ADR-012).
 include(":feature:scan")
 // Pendientes. Las rutas ya están declaradas en AgroVisionDestinations.
 include(":feature:catalog")
-// include(":feature:review")
+include(":feature:review")
 // include(":feature:history")
 // include(":feature:settings")
 

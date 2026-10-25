@@ -106,12 +106,15 @@ class FakeCaptureRepository(
 
     override suspend fun findById(id: String): Capture? = saved.firstOrNull { it.id == id }
     override suspend fun nextBatchToUpload(limit: Int, nowEpochMillis: Long) = emptyList<Capture>()
+    override suspend fun requeueStuckUploads() = Unit
+    override suspend fun skipUnsent() = Unit
     override suspend fun updateSyncState(
         id: String,
         state: SyncState,
         serverId: String?,
         error: String?,
         nextAttemptAtEpochMillis: Long?,
+        countsAsAttempt: Boolean,
     ) = Unit
 
     override suspend fun confirmPrediction(id: String): AgroResult<Unit, DomainError> {

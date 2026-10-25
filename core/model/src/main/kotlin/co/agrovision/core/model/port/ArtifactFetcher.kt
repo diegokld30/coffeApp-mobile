@@ -24,6 +24,9 @@ interface ArtifactFetcher {
     suspend fun fetch(
         url: String,
         sink: OutputStream,
+        /** Tamaño que el manifiesto firmado declara: un servidor (o un CDN
+         *  comprometido) que mande más no llena el almacenamiento del teléfono. */
+        maxBytes: Long = Long.MAX_VALUE,
         onProgress: (bytesRead: Long, totalBytes: Long) -> Unit = { _, _ -> },
     ): AgroResult<Long, DomainError>
 

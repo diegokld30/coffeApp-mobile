@@ -11,8 +11,10 @@
 <resources>
     <!-- oklch(0.985 0.002 250) — fondo del banco -->
     <color name="bench_50">#FFF9FAFB</color>
+    <!-- oklch(0.16 0.012 160) — fondo de la interfaz: oscuro premium (Ink950) -->
+    <color name="mist">#FF0B110E</color>
     <!-- oklch(0.220 0.008 250) — grafito -->
     <color name="bench_900">#FF181B1E</color>
-    <!-- oklch(0.58 0.28 330) — marca -->
-    <color name="brand_500">#FFC800C2</color>
+    <!-- oklch(0.53 0.13 155) — marca: verde hoja -->
+    <color name="brand_500">#FF087F4A</color>
 </resources>

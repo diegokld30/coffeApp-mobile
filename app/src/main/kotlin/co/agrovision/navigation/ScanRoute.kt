@@ -1,14 +1,29 @@
 package co.agrovision.navigation
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import co.agrovision.R
 import co.agrovision.core.designsystem.component.EmptyState
 import co.agrovision.feature.scan.FramingGuidance
 import co.agrovision.feature.scan.ScanEffect
@@ -29,6 +44,7 @@ import co.agrovision.feature.scan.camera.CameraCapture
 @Composable
 fun ScanRoute(
     onPestDetail: (String) -> Unit,
+    onReviewRequest: (captureId: String) -> Unit,
     onBack: () -> Unit,
 ) {
     val viewModel: ScanViewModel = hiltViewModel()
@@ -42,27 +58,49 @@ fun ScanRoute(
         viewModel.effects.collect { effect ->
             when (effect) {
                 is ScanEffect.NavigateToPestDetail -> onPestDetail(effect.pestId)
-                // ⚠️ Pendiente: la pantalla de creación de solicitud. Hasta que
-                // exista, el productor vuelve a la cámara — la captura YA quedó
-                // guardada en Room, así que no se pierde nada.
-                is ScanEffect.NavigateToReviewRequest -> onBack()
+                // La captura YA quedó guardada en Room: la solicitud parte de
+                // ella y le suma las cuatro tomas guiadas.
+                is ScanEffect.NavigateToReviewRequest -> onReviewRequest(effect.captureId)
                 is ScanEffect.ShowMessage -> Unit
                 ScanEffect.RequestCameraPermission -> Unit
             }
         }
     }
 
-    ScanScreen(
-        state = state,
-        onIntent = viewModel::onIntent,
-        cameraPreview = { modifier ->
-            CameraCapture(
-                guidance = (state as? ScanUiState.Preview)?.guidance ?: FramingGuidance.LISTO,
-                onCapture = { image -> viewModel.onIntent(ScanIntent.Capture(image)) },
-                modifier = modifier,
-            )
-        },
-    )
+    Box(modifier = Modifier.fillMaxSize()) {
+        ScanScreen(
+            state = state,
+            onIntent = viewModel::onIntent,
+            cameraPreview = { modifier ->
+                CameraCapture(
+                    guidance = (state as? ScanUiState.Preview)?.guidance ?: FramingGuidance.LISTO,
+                    onCapture = { image -> viewModel.onIntent(ScanIntent.Capture(image)) },
+                    modifier = modifier,
+                )
+            },
+        )
+
+        // Salida visible desde la cámara. Sin ella, la única forma de volver era
+        // el gesto de atrás, que buena parte del público no conoce.
+        if (state is ScanUiState.Preview) {
+            IconButton(
+                onClick = onBack,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .statusBarsPadding()
+                    .padding(16.dp)
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.45f)),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = stringResource(R.string.scan_cerrar),
+                    tint = Color.White,
+                )
+            }
+        }
+    }
 }
 
 /** Marcador del historial hasta que exista `:feature:history`. */

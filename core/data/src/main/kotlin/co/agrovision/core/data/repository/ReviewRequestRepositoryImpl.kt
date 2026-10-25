@@ -5,9 +5,11 @@ import co.agrovision.core.common.AgroResult
 import co.agrovision.core.common.Dispatcher
 import co.agrovision.core.common.Float16Codec
 import co.agrovision.core.database.dao.ReviewDao
+import co.agrovision.core.database.dao.SyncCursorDao
 import co.agrovision.core.database.entity.ReviewImageEntity
 import co.agrovision.core.database.entity.ReviewRequestEntity
 import co.agrovision.core.database.entity.ReviewRequestWithImages
+import co.agrovision.core.database.entity.SyncCursorEntity
 import co.agrovision.core.model.DomainError
 import co.agrovision.core.model.capture.GeoPoint
 import co.agrovision.core.model.capture.SyncState
@@ -16,6 +18,7 @@ import co.agrovision.core.model.pest.CropType
 import co.agrovision.core.model.pest.PlantOrgan
 import co.agrovision.core.model.port.ReviewRequestRepository
 import co.agrovision.core.model.review.CaptureAngle
+import co.agrovision.core.model.review.RemoteReviewStatus
 import co.agrovision.core.model.review.ResolutionType
 import co.agrovision.core.model.review.ReviewImage
 import co.agrovision.core.model.review.ReviewRequest
@@ -32,6 +35,7 @@ import javax.inject.Singleton
 @Singleton
 class ReviewRequestRepositoryImpl @Inject constructor(
     private val dao: ReviewDao,
+    private val cursors: SyncCursorDao,
     @Dispatcher(AgroDispatcher.IO) private val io: CoroutineDispatcher,
 ) : ReviewRequestRepository {
 
@@ -66,8 +70,47 @@ class ReviewRequestRepositoryImpl @Inject constructor(
             dao.nextBatchToUpload(limit, nowEpochMillis).map { it.toDomain() }
         }
 
-    override suspend fun applyResolution(id: String, request: ReviewRequest) = withContext(io) {
-        dao.upsertRequest(request.toEntity())
+    override suspend fun updateSyncState(
+        id: String,
+        state: SyncState,
+        serverId: String?,
+        error: String?,
+        nextAttemptAtEpochMillis: Long?,
+        status: ReviewStatus?,
+    ) = withContext(io) {
+        dao.updateSyncState(id, state.name, serverId, error, nextAttemptAtEpochMillis, status?.name)
+    }
+
+    /**
+     * Las solicitudes que el servidor conoce y el teléfono no —otra instalación,
+     * datos borrados— se ignoran: sin sus fotos locales no hay nada que mostrar.
+     */
+    override suspend fun mergeRemoteStatuses(statuses: List<RemoteReviewStatus>): Int =
+        withContext(io) {
+            statuses.sumOf { remote ->
+                dao.applyRemoteStatus(
+                    id = remote.requestId,
+                    status = remote.status.name,
+                    resolutionType = remote.resolution?.type?.name,
+                    resolvedPestId = remote.resolution?.resolvedPestId,
+                    agronomistResponse = remote.resolution?.agronomistResponse,
+                    resolvedAt = remote.resolution?.resolvedAtEpochMillis,
+                )
+            }
+        }
+
+    override suspend fun statusCursor(): Long? = withContext(io) {
+        cursors.find(SyncCursorEntity.RESOURCE_RESOLUTIONS)?.sinceEpochMillis
+    }
+
+    override suspend fun updateStatusCursor(sinceEpochMillis: Long) = withContext(io) {
+        cursors.upsert(
+            SyncCursorEntity(
+                resource = SyncCursorEntity.RESOURCE_RESOLUTIONS,
+                sinceEpochMillis = sinceEpochMillis,
+                etag = null,
+            )
+        )
     }
 
     override suspend fun markResolutionRead(id: String) = withContext(io) {

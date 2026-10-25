@@ -5,6 +5,7 @@ import co.agrovision.core.model.DomainError
 import co.agrovision.core.model.capture.Capture
 import co.agrovision.core.model.mlmodel.ModelManifest
 import co.agrovision.core.model.pest.PestTaxon
+import co.agrovision.core.model.review.RemoteReviewStatus
 import co.agrovision.core.model.review.ReviewRequest
 
 /**
@@ -42,12 +43,23 @@ interface SyncGateway {
         etag: String?,
     ): AgroResult<CatalogDelta, DomainError>
 
-    /** Resoluciones de agrónomo. Quedan consultables sin conexión. */
+    /**
+     * Estado en el servidor de las solicitudes del productor, con la resolución
+     * del agrónomo cuando la hay. Devuelve estados y no `ReviewRequest` completas
+     * porque las imágenes solo existen en el teléfono: el repositorio fusiona el
+     * estado sobre la fila local, que queda consultable sin conexión.
+     */
     suspend fun fetchMyResolutions(
         sinceEpochMillis: Long?,
-    ): AgroResult<List<ReviewRequest>, DomainError>
+    ): AgroResult<List<RemoteReviewStatus>, DomainError>
 
     suspend fun registerPushToken(token: String): AgroResult<Unit, DomainError>
+
+    /**
+     * Telemetría de campo anónima (`public/v1/telemetry/field-metrics`): sin JWT y sin datos
+     * del productor. Es lo que llena el tablero de telemetría del panel.
+     */
+    suspend fun postFieldMetrics(metrics: Map<String, String>): AgroResult<Unit, DomainError>
 
     /**
      * Manifiesto del modelo que le corresponde a ESTE dispositivo (§8.2).
@@ -64,7 +76,7 @@ interface SyncGateway {
     suspend fun fetchModelManifest(
         appVersion: String,
         deviceId: String,
-    ): AgroResult<ModelManifest, DomainError>
+    ): AgroResult<ModelManifest?, DomainError>
 }
 
 data class UploadOutcome(
@@ -75,6 +87,9 @@ data class UploadOutcome(
      *  clave (§15.3). */
     val presignedImageUrl: String?,
     val rejectionReason: String?,
+    /** Solicitudes de revisión: una URL prefirmada POR FOTO, por id de imagen.
+     *  Una solicitud tiene varias tomas y cada una va a su propia clave. */
+    val imageUploadUrls: Map<String, String> = emptyMap(),
 )
 
 enum class UploadStatus {

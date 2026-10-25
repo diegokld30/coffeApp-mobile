@@ -43,9 +43,12 @@ object AgroConstants {
          *  `labels.json`; este es el respaldo si el metadato falta. */
         const val DEFAULT_EMBEDDING_DIM = 256
 
-        /** Una comprobación de OTA por día como máximo (§8.3). Más frecuente
-         *  gasta datos prepago sin aportar frescura útil. */
-        val UPDATE_CHECK_INTERVAL: Duration = 24.hours
+        /**
+         * Entre comprobaciones de OTA. La consulta del manifiesto pesa menos de 1 KB: lo que gasta
+         * datos es la descarga del modelo, y esa solo ocurre cuando hay una versión nueva. Por eso
+         * un modelo corregido llega en minutos y no al día siguiente (y un kill-switch igual).
+         */
+        val UPDATE_CHECK_INTERVAL: Duration = 15.minutes
 
         /** Presupuesto de latencia p95 en el dispositivo de referencia
          *  (Snapdragon 680, 4 GB). Por encima, el productor percibe la app como

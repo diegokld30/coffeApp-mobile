@@ -5,7 +5,14 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import co.agrovision.core.common.AgroDispatcher
 import co.agrovision.core.common.Dispatcher
+import co.agrovision.core.common.AgroResult
+import co.agrovision.core.model.mlmodel.ModelUpdateDecision
+import co.agrovision.core.model.port.ModelRegistryRepository
 import co.agrovision.core.model.port.SettingsRepository
+import co.agrovision.core.model.port.ConnectivityMonitor
+import co.agrovision.core.model.usecase.ActivateModelUseCase
+import co.agrovision.core.model.usecase.RollBackModelUseCase
+import co.agrovision.core.model.usecase.CheckModelUpdateUseCase
 import co.agrovision.core.model.usecase.SyncPendingUseCase
 import co.agrovision.core.model.usecase.SyncTrigger
 import kotlinx.coroutines.CoroutineDispatcher
@@ -39,6 +46,11 @@ class ForegroundSyncTrigger @Inject constructor(
     private val syncPending: SyncPendingUseCase,
     private val scheduler: SyncScheduler,
     private val settings: SettingsRepository,
+    private val registry: ModelRegistryRepository,
+    private val checkModelUpdate: CheckModelUpdateUseCase,
+    private val activateModel: ActivateModelUseCase,
+    private val rollBackModel: RollBackModelUseCase,
+    private val connectivity: ConnectivityMonitor,
     @Dispatcher(AgroDispatcher.IO) private val io: CoroutineDispatcher,
 ) : DefaultLifecycleObserver {
 
@@ -51,11 +63,40 @@ class ForegroundSyncTrigger @Inject constructor(
         ProcessLifecycleOwner.get().lifecycle.addObserver(this)
     }
 
+    /**
+     * Pone el modelo al día cada vez que la app pasa a primer plano.
+     *
+     * Sin modelo se pide siempre y en cualquier red: sin él la app no puede escanear. Con uno
+     * instalado se respeta la política de datos del productor (con «solo WiFi» espera a la
+     * WiFi, donde también corre el trabajo en segundo plano) y el caso de uso limita la
+     * frecuencia a una consulta cada 15 minutos.
+     */
+    private suspend fun updateModel() {
+        val hasModel = registry.currentState().active != null
+        if (hasModel) {
+            val network = connectivity.current()
+            if (!network.isOnline) return
+            if (network.isMetered && !settings.current().syncNetworkPolicy.allowsMetered) return
+        }
+
+        val decision = (checkModelUpdate(force = !hasModel) as? AgroResult.Success)?.value
+        when (decision) {
+            is ModelUpdateDecision.Available -> activateModel(decision.manifest)
+            // Retirada de emergencia: el modelo anterior sigue en disco, no hay nada que descargar
+            is ModelUpdateDecision.KillSwitchTriggered -> rollBackModel()
+            else -> Unit
+        }
+    }
+
     override fun onStart(owner: LifecycleOwner) {
         scope.launch {
             // No se comprueba conectividad aquí: el caso de uso ya lo hace y
             // devuelve `NoConnection` sin efectos. Duplicar la comprobación
             // abriría la puerta a que las dos discrepen.
+            // El modelo se actualiza ya, sin esperar los minutos de retraso del trabajo en
+            // segundo plano: una versión nueva llega en cuanto el productor abre la app.
+            updateModel()
+
             syncPending(SyncTrigger.FOREGROUND)
 
             // Se encola además el trabajo en segundo plano. Si el fabricante lo

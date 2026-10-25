@@ -80,11 +80,13 @@ class EnergyMahalanobisGate(
         val topProbability = ranked.first().second
 
         // ── Compuerta 2 ──
-        val energy = energyScore(logits, calibration.temperature)
-        val mahalanobis = mahalanobisDistance(inference.embedding.values, topIndex)
-        val combined = combine(energy, mahalanobis)
+        // Un modelo simple no tiene embedding: no hay forma de saber si la muestra
+        // es desconocida, así que la compuerta no existe y todo lo decide la 3.
+        val energy = if (calibration.isSimple) 0f else energyScore(logits, calibration.temperature)
+        val mahalanobis = if (calibration.isSimple) 0f else mahalanobisDistance(inference.embedding.values, topIndex)
+        val combined = if (calibration.isSimple) 0f else combine(energy, mahalanobis)
 
-        if (combined > calibration.oodThreshold) {
+        if (!calibration.isSimple && combined > calibration.oodThreshold) {
             return GateDecision.OutOfDomain(
                 oodScore = combined,
                 energyScore = energy,

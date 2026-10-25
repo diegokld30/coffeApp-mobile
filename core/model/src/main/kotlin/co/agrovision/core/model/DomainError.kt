@@ -1,6 +1,7 @@
 package co.agrovision.core.model
 
 import co.agrovision.core.common.MessageKey
+import co.agrovision.core.model.identity.ProducerProfile
 import co.agrovision.core.model.mlmodel.ModelUpdateFailure
 
 /**
@@ -50,6 +51,31 @@ sealed interface DomainError {
     // ── Solicitudes de revisión ──
     data class NotEnoughImages(val provided: Int, val required: Int) : DomainError {
         override val message = MessageKey.REVIEW_NEEDS_MORE_IMAGES
+    }
+
+    // ── Cuenta ──
+
+    /** No hay sesión: la operación exige el JWT que entrega el OTP. */
+    data object NotSignedIn : DomainError {
+        override val message = MessageKey.ACCOUNT_NOT_SIGNED_IN
+    }
+
+    /** El servidor solo acepta un código cada 30 s (HTTP 429). */
+    data object OtpRequestedTooSoon : DomainError {
+        override val message = MessageKey.ACCOUNT_OTP_TOO_SOON
+    }
+
+    /** Código OTP incorrecto o vencido. */
+    data object InvalidOtp : DomainError {
+        override val message = MessageKey.ACCOUNT_OTP_INVALID
+    }
+
+    /** Se valida antes de enviar: el backend rechaza el perfil completo por un
+     *  solo campo fuera de rango, y sobre 3G ese viaje de ida y vuelta cuesta. */
+    data class InvalidProducerProfile(
+        val fields: Set<ProducerProfile.Field>,
+    ) : DomainError {
+        override val message = MessageKey.ACCOUNT_PROFILE_INVALID
     }
 
     // ── Red y sincronización ──

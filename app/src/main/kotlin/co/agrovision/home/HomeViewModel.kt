@@ -3,6 +3,8 @@ package co.agrovision.home
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import co.agrovision.core.model.pest.PestKind
+import co.agrovision.core.model.pest.PestTaxon
 import co.agrovision.core.model.port.CaptureRepository
 import co.agrovision.core.model.usecase.SearchCatalogUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -16,6 +18,9 @@ import javax.inject.Inject
 data class HomeUiState(
     val pendingCount: Int = 0,
     val catalogCount: Int = 0,
+    /** Fichas para el carrusel de Inicio. Sin las de planta sana: el
+     *  carrusel es para reconocer problemas, no para mostrar hojas bonitas. */
+    val featured: List<PestTaxon> = emptyList(),
 )
 
 /**
@@ -37,10 +42,20 @@ class HomeViewModel @Inject constructor(
         captures.observePendingCount(),
         searchCatalog(""),
     ) { pending, catalog ->
-        HomeUiState(pendingCount = pending, catalogCount = catalog.size)
+        HomeUiState(
+            pendingCount = pending,
+            catalogCount = catalog.size,
+            featured = catalog
+                .filter { it.kind != PestKind.SANO && it.imageRefs.isNotEmpty() }
+                .take(FEATURED_MAX),
+        )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000L),
         initialValue = HomeUiState(),
     )
+
+    private companion object {
+        const val FEATURED_MAX = 8
+    }
 }

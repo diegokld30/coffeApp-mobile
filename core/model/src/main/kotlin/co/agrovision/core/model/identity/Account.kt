@@ -28,6 +28,7 @@ data class Account(
     val displayName: String?,
     val farmName: String?,
     val vereda: String?,
+    val municipality: String?,
     val registeredAtEpochMillis: Long?,
     val validatedAtEpochMillis: Long?,
     /**
@@ -41,7 +42,26 @@ data class Account(
      *  entrenamiento. La revocación excluye las muestras de futuras
      *  instantáneas de dataset. */
     val trainingConsent: Boolean,
+    /**
+     * El JWT venció o el servidor lo rechazó (401) y ya se borró. El nivel se
+     * conserva —el productor sigue registrado y con perfil—, pero nada sube
+     * hasta que vuelva a entrar con OTP. El token dura 30 minutos y no hay
+     * renovación, así que este es el estado normal tras media hora.
+     */
+    val sessionExpired: Boolean = false,
+    /** Datos del cafetal. Solo viven en el teléfono y viajan en la nota de cada
+     *  solicitud: el perfil del backend no tiene dónde guardarlos. */
+    val coffeeVariety: CoffeeVariety? = null,
+    val plantingAge: PlantingAge? = null,
 ) {
+    /** Lo que falta para poder enviar solicitudes: sesión vigente, perfil en el
+     *  servidor y los datos del cafetal. */
+    val needsSignIn: Boolean
+        get() = tier == UserTier.T0_ANONIMO || sessionExpired
+
+    val needsProfile: Boolean
+        get() = tier != UserTier.T2_VALIDADO || coffeeVariety == null || plantingAge == null
+
     companion object {
         fun anonymous(deviceId: String) = Account(
             tier = UserTier.T0_ANONIMO,
@@ -49,6 +69,7 @@ data class Account(
             displayName = null,
             farmName = null,
             vereda = null,
+            municipality = null,
             registeredAtEpochMillis = null,
             validatedAtEpochMillis = null,
             deviceId = deviceId,
@@ -79,10 +100,29 @@ sealed interface UploadGate {
         val sinceEpochMillis: Long,
     ) : UploadGate
 
+    /** Cuenta registrada con la sesión vencida. La cola espera intacta —sin
+     *  gastar reintentos— y se reanuda al volver a entrar con OTP. */
+    data class BlockedSignInRequired(val queuedCount: Int) : UploadGate
+
     val isBlocked: Boolean get() = this !is Allowed
 
     companion object {
-        fun evaluate(tier: UserTier, queuedCount: Int, registeredAtEpochMillis: Long?): UploadGate =
+        fun evaluate(
+            tier: UserTier,
+            queuedCount: Int,
+            registeredAtEpochMillis: Long?,
+            sessionExpired: Boolean = false,
+        ): UploadGate =
+            when {
+                sessionExpired && tier != UserTier.T0_ANONIMO -> BlockedSignInRequired(queuedCount)
+                else -> evaluateTier(tier, queuedCount, registeredAtEpochMillis)
+            }
+
+        private fun evaluateTier(
+            tier: UserTier,
+            queuedCount: Int,
+            registeredAtEpochMillis: Long?,
+        ): UploadGate =
             when (tier) {
                 UserTier.T0_ANONIMO -> BlockedNeedsAccount(queuedCount)
                 UserTier.T1_REGISTRADO -> BlockedPendingValidation(

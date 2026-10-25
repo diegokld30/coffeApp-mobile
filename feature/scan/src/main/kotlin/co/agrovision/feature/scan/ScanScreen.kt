@@ -1,6 +1,7 @@
 package co.agrovision.feature.scan
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,20 +10,29 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Eco
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import co.agrovision.core.designsystem.component.ConfidenceBar
@@ -128,7 +138,7 @@ private fun WarmingUpContent() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        CircularProgressIndicator()
+        FieldProgress()
         Text(
             text = stringResource(R.string.scan_preparando),
             style = MaterialTheme.typography.bodyMedium,
@@ -144,7 +154,7 @@ private fun AnalyzingContent() {
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        CircularProgressIndicator()
+        FieldProgress()
         Text(
             text = stringResource(R.string.scan_analizando),
             style = MaterialTheme.typography.titleMedium,
@@ -156,6 +166,11 @@ private fun AnalyzingContent() {
 @Composable
 private fun IdentifiedContent(state: ScanUiState.Identified, onIntent: (ScanIntent) -> Unit) {
     ResultSheet {
+        ResultBadge(
+            icon = Icons.Filled.BugReport,
+            background = MaterialTheme.colorScheme.secondaryContainer,
+            tint = MaterialTheme.colorScheme.onSecondaryContainer,
+        )
         SeverityStrip(
             level = SeverityLevel.MODERADO,
             density = SeverityStripDensity.PROMINENT,
@@ -187,7 +202,7 @@ private fun IdentifiedContent(state: ScanUiState.Identified, onIntent: (ScanInte
         )
         SecondaryFieldButton(
             text = stringResource(R.string.scan_no_es_esto),
-            icon = Icons.Filled.HelpOutline,
+            icon = Icons.AutoMirrored.Filled.HelpOutline,
             onClick = { onIntent(ScanIntent.CreateReviewRequest(state.captureId)) },
         )
     }
@@ -196,6 +211,11 @@ private fun IdentifiedContent(state: ScanUiState.Identified, onIntent: (ScanInte
 @Composable
 private fun NotAPestContent(state: ScanUiState.NotAPest, onIntent: (ScanIntent) -> Unit) {
     ResultSheet {
+        ResultBadge(
+            icon = Icons.Filled.Eco,
+            background = AgroTheme.semantic.severity.level0,
+            tint = AgroTheme.semantic.dataText,
+        )
         SeverityStrip(level = SeverityLevel.SANO, density = SeverityStripDensity.PROMINENT)
         Text(stringResource(R.string.scan_no_es_plaga), style = MaterialTheme.typography.headlineMedium)
         Text(state.label, style = MaterialTheme.typography.bodyLarge)
@@ -215,6 +235,11 @@ private fun NotAPestContent(state: ScanUiState.NotAPest, onIntent: (ScanIntent) 
 @Composable
 private fun UncertainContent(state: ScanUiState.Uncertain, onIntent: (ScanIntent) -> Unit) {
     ResultSheet {
+        ResultBadge(
+            icon = Icons.AutoMirrored.Filled.HelpOutline,
+            background = MaterialTheme.colorScheme.primaryContainer,
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
         Text(
             text = UiText.Message(state.reason.message).resolve(),
             style = MaterialTheme.typography.headlineMedium,
@@ -229,7 +254,7 @@ private fun UncertainContent(state: ScanUiState.Uncertain, onIntent: (ScanIntent
 
         PrimaryFieldButton(
             text = stringResource(R.string.scan_pedir_agronomo),
-            icon = Icons.Filled.HelpOutline,
+            icon = Icons.AutoMirrored.Filled.HelpOutline,
             onClick = { onIntent(ScanIntent.CreateReviewRequest(state.captureId)) },
         )
         SecondaryFieldButton(
@@ -243,6 +268,11 @@ private fun UncertainContent(state: ScanUiState.Uncertain, onIntent: (ScanIntent
 @Composable
 private fun OutOfDomainContent(state: ScanUiState.OutOfDomain, onIntent: (ScanIntent) -> Unit) {
     ResultSheet {
+        ResultBadge(
+            icon = if (state.modelWasAvailable) Icons.Filled.SearchOff else Icons.Filled.Inventory,
+            background = MaterialTheme.colorScheme.primaryContainer,
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
         Text(
             text = stringResource(
                 if (state.modelWasAvailable) R.string.scan_no_reconozco
@@ -263,7 +293,7 @@ private fun OutOfDomainContent(state: ScanUiState.OutOfDomain, onIntent: (ScanIn
 
         PrimaryFieldButton(
             text = stringResource(R.string.scan_pedir_agronomo),
-            icon = Icons.Filled.HelpOutline,
+            icon = Icons.AutoMirrored.Filled.HelpOutline,
             onClick = { onIntent(ScanIntent.CreateReviewRequest(state.captureId)) },
         )
         SecondaryFieldButton(
@@ -315,7 +345,10 @@ private fun ErrorContent(state: ScanUiState.Error, onIntent: (ScanIntent) -> Uni
 }
 
 /** Contenedor común de los resultados. Desplazable porque en un teléfono de
- *  pantalla pequeña con fuente ampliada, una ficha no cabe. */
+ *  pantalla pequeña con fuente ampliada, una ficha no cabe.
+ *
+ *  Es una tarjeta sobre el fondo neutro del banco: el resultado se lee como una
+ *  respuesta entregada, no como texto suelto sobre la pantalla. */
 @Composable
 private fun ResultSheet(content: @Composable () -> Unit) {
     Column(
@@ -324,9 +357,37 @@ private fun ResultSheet(content: @Composable () -> Unit) {
             .verticalScroll(rememberScrollState())
             .statusBarsPadding()
             .navigationBarsPadding()
-            .padding(AgroTheme.dimensions.gutter),
+            .padding(AgroTheme.dimensions.gutter)
+            .clip(MaterialTheme.shapes.extraLarge)
+            .background(AgroTheme.semantic.sheet)
+            .padding(AgroTheme.dimensions.gutterWide),
         verticalArrangement = Arrangement.spacedBy(AgroTheme.dimensions.gutter),
     ) {
         content()
     }
+}
+
+/** Icono de cabecera del resultado. Dice de un vistazo qué clase de respuesta
+ *  es antes de leer el título; el título sigue siendo el canal principal. */
+@Composable
+private fun ResultBadge(icon: ImageVector, background: Color, tint: Color) {
+    Box(
+        modifier = Modifier
+            .size(56.dp)
+            .clip(CircleShape)
+            .background(background),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(28.dp))
+    }
+}
+
+@Composable
+private fun FieldProgress() {
+    CircularProgressIndicator(
+        modifier = Modifier.size(56.dp),
+        color = MaterialTheme.colorScheme.secondary,
+        trackColor = AgroTheme.semantic.divider,
+        strokeWidth = 5.dp,
+    )
 }

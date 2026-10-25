@@ -50,12 +50,18 @@ val MessageKey.resourceId: Int
 
         MessageKey.UPLOAD_QUEUED_NEEDS_ACCOUNT -> R.string.cola_necesita_cuenta
         MessageKey.UPLOAD_QUEUED_PENDING_VALIDATION -> R.string.cola_pendiente_validacion
+        MessageKey.UPLOAD_QUEUED_SIGN_IN_REQUIRED -> R.string.cola_requiere_sesion
         MessageKey.UPLOAD_QUEUED_OFFLINE -> R.string.cola_sin_conexion
         MessageKey.UPLOAD_COMPLETED -> R.string.cola_completada
 
         MessageKey.REVIEW_NEEDS_MORE_IMAGES -> R.string.solicitud_faltan_fotos
         MessageKey.REVIEW_CREATED -> R.string.solicitud_creada
         MessageKey.REVIEW_RESOLVED -> R.string.solicitud_resuelta
+
+        MessageKey.ACCOUNT_NOT_SIGNED_IN -> R.string.cuenta_sin_sesion
+        MessageKey.ACCOUNT_OTP_TOO_SOON -> R.string.cuenta_otp_muy_pronto
+        MessageKey.ACCOUNT_OTP_INVALID -> R.string.cuenta_otp_invalido
+        MessageKey.ACCOUNT_PROFILE_INVALID -> R.string.cuenta_perfil_invalido
 
         MessageKey.MODEL_UPDATE_AVAILABLE -> R.string.modelo_actualizacion_disponible
         MessageKey.MODEL_UPDATE_INSTALLED -> R.string.modelo_actualizado

@@ -2,7 +2,13 @@ package co.agrovision.network.api
 
 import co.agrovision.network.api.dto.CaptureBatchRequestDto
 import co.agrovision.network.api.dto.CatalogDeltaDto
+import co.agrovision.network.api.dto.ConsentRevocationDto
 import co.agrovision.network.api.dto.ModelManifestDto
+import co.agrovision.network.api.dto.OtpRequestDto
+import co.agrovision.network.api.dto.OtpVerificationDto
+import co.agrovision.network.api.dto.OtpVerificationResponseDto
+import co.agrovision.network.api.dto.ProducerProfileRequestDto
+import co.agrovision.network.api.dto.ProducerProfileResponseDto
 import co.agrovision.network.api.dto.PushTokenDto
 import co.agrovision.network.api.dto.ReviewRequestBatchDto
 import co.agrovision.network.api.dto.ReviewResolutionDto
@@ -11,6 +17,7 @@ import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Query
 
@@ -81,11 +88,33 @@ interface AgroVisionApiService {
         @Body body: ReviewRequestBatchDto,
     ): Response<UploadBatchResponseDto>
 
+    /** `since` en milisegundos epoch, hora del servidor. */
     @GET("v1/review-requests/mine")
     suspend fun myResolutions(
-        @Query("since") sinceIso: String?,
+        @Query("since") sinceEpochMillis: Long?,
     ): Response<List<ReviewResolutionDto>>
 
     @POST("v1/devices/push-token")
     suspend fun registerPushToken(@Body body: PushTokenDto): Response<Unit>
+
+    // ── Identidad ──
+    // Sin el prefijo `v1/`: así los expone el backend.
+
+    @POST("auth/solicitar-otp")
+    suspend fun requestOtp(@Body body: OtpRequestDto): Response<Unit>
+
+    @POST("auth/validar-otp")
+    suspend fun verifyOtp(@Body body: OtpVerificationDto): Response<OtpVerificationResponseDto>
+
+    @GET("productores/me")
+    suspend fun myProducerProfile(): Response<ProducerProfileResponseDto>
+
+    @POST("productores/me")
+    suspend fun saveProducerProfile(@Body body: ProducerProfileRequestDto): Response<Unit>
+
+    @PATCH("productores/me/consentimiento/otorgar")
+    suspend fun grantTrainingConsent(): Response<Unit>
+
+    @PATCH("productores/me/consentimiento/revocar")
+    suspend fun revokeTrainingConsent(@Body body: ConsentRevocationDto): Response<Unit>
 }

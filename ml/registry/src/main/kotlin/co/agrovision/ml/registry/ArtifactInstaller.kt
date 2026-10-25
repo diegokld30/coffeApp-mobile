@@ -87,7 +87,7 @@ class ArtifactInstaller @Inject constructor(
         val digest = MessageDigest.getInstance(SHA_256)
         val downloaded = staged.outputStream().use { output ->
             DigestOutputStream(output, digest).use { hashing ->
-                fetcher.fetch(manifest.modelUrl, hashing) { read, total ->
+                fetcher.fetch(manifest.modelUrl, hashing, maxBytes = manifest.sizeBytes) { read, total ->
                     if (total > 0) onProgress(read.toFloat() / total)
                 }
             }

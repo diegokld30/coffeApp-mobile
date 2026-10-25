@@ -3,6 +3,7 @@ package co.agrovision.di
 import co.agrovision.BuildConfig
 import co.agrovision.core.model.port.AppVersionProvider
 import co.agrovision.core.datastore.DeviceIdentityStore
+import co.agrovision.core.datastore.SessionTokenStore
 import co.agrovision.ml.registry.Ed25519SignatureVerifier
 import co.agrovision.network.api.AccessTokenProvider
 import co.agrovision.network.api.DeviceIdProvider
@@ -102,14 +103,11 @@ object AppConfigModule {
         IntegrityTokenProvider { null }
 
     /**
-     * ⚠️ Pendiente: lectura del JWT desde almacenamiento cifrado.
-     *
-     * Con `null`, la superficie autenticada responde 401 y la cola de subida
-     * queda esperando — que es exactamente lo que debe pasar mientras no exista
-     * el flujo de registro por OTP. Nada se pierde: las capturas siguen en Room.
+     * JWT que dejó el OTP. Sin sesión devuelve `null`: la superficie autenticada
+     * responde 401 y la cola espera. Nada se pierde: todo sigue en Room.
      */
     @Provides
     @Singleton
-    fun provideAccessTokenProvider(): AccessTokenProvider =
-        AccessTokenProvider { null }
+    fun provideAccessTokenProvider(tokens: SessionTokenStore): AccessTokenProvider =
+        AccessTokenProvider { tokens.accessToken() }
 }

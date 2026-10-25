@@ -32,6 +32,7 @@ class ObserveUploadGateUseCase @Inject constructor(
                 tier = current.tier,
                 queuedCount = queued,
                 registeredAtEpochMillis = current.registeredAtEpochMillis,
+                sessionExpired = current.sessionExpired,
             )
         }
 }

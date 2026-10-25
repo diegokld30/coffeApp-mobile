@@ -4,6 +4,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -15,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -51,6 +54,7 @@ import co.agrovision.core.model.pest.PlantOrgan
  * Ocultarla sin explicación haría pensar que no hay tratamiento; mostrarla sin
  * aval es exposición civil e incumplimiento ante el ICA (§13.6).
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PestDetailScreen(
     pest: PestTaxon?,
@@ -76,14 +80,21 @@ fun PestDetailScreen(
                     targetPx = 1024,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(4f / 3f),
+                        .aspectRatio(4f / 3f)
+                        .clip(
+                            RoundedCornerShape(
+                                bottomStart = AgroTheme.dimensions.heroRadius,
+                                bottomEnd = AgroTheme.dimensions.heroRadius,
+                            ),
+                        ),
                 )
                 IconButton(
                     onClick = onBack,
                     modifier = Modifier
-                        .padding(AgroTheme.dimensions.gutterTight)
-                        .clip(RoundedCornerShape(50))
-                        .background(MaterialTheme.colorScheme.surface),
+                        .padding(AgroTheme.dimensions.gutter)
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(AgroTheme.semantic.card),
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.ArrowBack,
@@ -95,10 +106,15 @@ fun PestDetailScreen(
 
         item {
             Column(
-                modifier = Modifier.padding(AgroTheme.dimensions.gutter),
+                modifier = Modifier.padding(
+                    start = AgroTheme.dimensions.gutter,
+                    end = AgroTheme.dimensions.gutter,
+                    top = AgroTheme.dimensions.gutterWide,
+                    bottom = AgroTheme.dimensions.gutter,
+                ),
                 verticalArrangement = Arrangement.spacedBy(AgroTheme.dimensions.gutterTight),
             ) {
-                Text(pest.commonName, style = MaterialTheme.typography.headlineMedium)
+                Text(pest.commonName, style = MaterialTheme.typography.headlineLarge)
                 Text(
                     text = pest.scientificName,
                     style = MaterialTheme.typography.bodyLarge,
@@ -113,6 +129,7 @@ fun PestDetailScreen(
         if (pest.imageRefs.size > 1) {
             item {
                 LazyRow(
+                    modifier = Modifier.padding(bottom = AgroTheme.dimensions.gutter),
                     contentPadding = PaddingValues(horizontal = AgroTheme.dimensions.gutter),
                     horizontalArrangement = Arrangement.spacedBy(AgroTheme.dimensions.gutterTight),
                 ) {
@@ -123,7 +140,7 @@ fun PestDetailScreen(
                             targetPx = 512,
                             modifier = Modifier
                                 .size(GALLERY_ITEM)
-                                .clip(RoundedCornerShape(AgroTheme.dimensions.cardRadius)),
+                                .clip(MaterialTheme.shapes.medium),
                         )
                     }
                 }
@@ -147,10 +164,19 @@ fun PestDetailScreen(
                         stringResource(R.string.ficha_organos),
                         style = MaterialTheme.typography.titleLarge,
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
                         pest.affectedOrgans.forEach { organ ->
-                            co.agrovision.core.designsystem.component.StatusPill(
+                            Text(
                                 text = stringResource(organ.labelRes()),
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.secondaryContainer)
+                                    .padding(horizontal = 14.dp, vertical = 8.dp),
                             )
                         }
                     }
@@ -161,21 +187,35 @@ fun PestDetailScreen(
         item {
             if (pest.showsRecommendations) {
                 Column(
-                    modifier = Modifier.padding(
-                        horizontal = AgroTheme.dimensions.gutter,
-                        vertical = AgroTheme.dimensions.gutterTight,
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(AgroTheme.dimensions.gutterTight),
+                    modifier = Modifier
+                        .padding(
+                            horizontal = AgroTheme.dimensions.gutter,
+                            vertical = AgroTheme.dimensions.gutterTight,
+                        )
+                        .fillMaxWidth()
+                        .clip(MaterialTheme.shapes.medium)
+                        .background(AgroTheme.semantic.card)
+                        .padding(AgroTheme.dimensions.gutter),
+                    verticalArrangement = Arrangement.spacedBy(AgroTheme.dimensions.gutter),
                 ) {
                     Text(
                         stringResource(R.string.ficha_manejo),
                         style = MaterialTheme.typography.titleLarge,
                     )
                     pest.recommendations.forEach { recommendation ->
-                        Text(
-                            text = recommendation.detail.ifBlank { recommendation.summary },
-                            style = MaterialTheme.typography.bodyLarge,
-                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .padding(top = 9.dp)
+                                    .size(6.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.secondary),
+                            )
+                            Text(
+                                text = recommendation.detail.ifBlank { recommendation.summary },
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
                     }
                     pest.approval?.let {
                         Text(
@@ -215,9 +255,10 @@ private fun PendingApprovalNotice() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(AgroTheme.dimensions.gutter),
-        shape = RoundedCornerShape(AgroTheme.dimensions.cardRadius),
+        shape = MaterialTheme.shapes.medium,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         ),
     ) {
         Row(
@@ -227,7 +268,7 @@ private fun PendingApprovalNotice() {
             Icon(
                 Icons.Filled.Info,
                 contentDescription = null,
-                tint = AgroTheme.semantic.mutedText,
+                tint = MaterialTheme.colorScheme.onSecondaryContainer,
             )
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
@@ -237,7 +278,6 @@ private fun PendingApprovalNotice() {
                 Text(
                     stringResource(R.string.ficha_manejo_sin_aval_cuerpo),
                     style = MaterialTheme.typography.bodyMedium,
-                    color = AgroTheme.semantic.mutedText,
                 )
             }
         }
@@ -271,4 +311,4 @@ internal fun PlantOrgan.labelRes(): Int = when (this) {
     PlantOrgan.FLOR -> R.string.organo_flor
 }
 
-private val GALLERY_ITEM = 120.dp
+private val GALLERY_ITEM = 128.dp

@@ -1,9 +1,19 @@
 package co.agrovision.network.api
 
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.Interceptor
 import okhttp3.Response
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
+
+/**
+ * Superficie pública = cualquier ruta con el segmento `/public/v1/`. Se busca el
+ * segmento y no un prefijo porque la base de la API puede llevar su propio
+ * prefijo (`/api/` en el backend de desarrollo).
+ */
+internal fun HttpUrl.isPublicSurface(): Boolean = encodedPath.contains("/public/v1/")
 
 /**
  * Identificador anónimo del dispositivo en cada petición.
@@ -58,7 +68,7 @@ class PlayIntegrityInterceptor @Inject constructor(
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
-        if (!request.url.encodedPath.startsWith(PUBLIC_PREFIX)) {
+        if (!request.url.isPublicSurface()) {
             return chain.proceed(request)
         }
 
@@ -69,7 +79,6 @@ class PlayIntegrityInterceptor @Inject constructor(
     }
 
     private companion object {
-        const val PUBLIC_PREFIX = "/public/v1"
         const val HEADER = "X-Integrity-Token"
     }
 }
@@ -91,11 +100,18 @@ fun interface IntegrityTokenProvider {
 @Singleton
 class AuthInterceptor @Inject constructor(
     private val tokenProvider: AccessTokenProvider,
+    @Named("apiBaseUrl") baseUrl: String,
 ) : Interceptor {
+
+    private val apiBase: HttpUrl = baseUrl.toHttpUrl()
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
-        if (request.url.encodedPath.startsWith(PUBLIC_PREFIX)) {
+        // El JWT solo viaja a la API. Las fotos van por el mismo cliente a URL
+        // prefirmadas del almacenamiento de objetos: filtrar ahí el token del
+        // productor sería regalarlo, y S3 además rechaza la petición si trae
+        // `Authorization` junto a la firma de la URL.
+        if (request.url.isPublicSurface() || !request.url.isSameOrigin(apiBase)) {
             return chain.proceed(request)
         }
 
@@ -107,8 +123,10 @@ class AuthInterceptor @Inject constructor(
         )
     }
 
+    private fun HttpUrl.isSameOrigin(other: HttpUrl): Boolean =
+        scheme == other.scheme && host == other.host && port == other.port
+
     private companion object {
-        const val PUBLIC_PREFIX = "/public/v1"
         const val HEADER = "Authorization"
     }
 }

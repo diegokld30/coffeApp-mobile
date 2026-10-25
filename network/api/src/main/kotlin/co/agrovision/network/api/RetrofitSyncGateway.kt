@@ -17,16 +17,24 @@ import co.agrovision.core.model.port.CatalogDelta
 import co.agrovision.core.model.port.SyncGateway
 import co.agrovision.core.model.port.UploadOutcome
 import co.agrovision.core.model.port.UploadStatus
+import co.agrovision.core.model.review.RemoteReviewStatus
+import co.agrovision.core.model.review.ResolutionType
 import co.agrovision.core.model.review.ReviewRequest
+import co.agrovision.core.model.review.ReviewResolution
+import co.agrovision.core.model.review.ReviewStatus
 import co.agrovision.network.api.dto.CaptureBatchRequestDto
 import co.agrovision.network.api.dto.CaptureDto
+import co.agrovision.network.api.dto.ImageUploadDto
 import co.agrovision.network.api.dto.LocationDto
 import co.agrovision.network.api.dto.ReviewImageDto
 import co.agrovision.network.api.dto.ReviewRequestBatchDto
 import co.agrovision.network.api.dto.ReviewRequestDto
+import co.agrovision.network.api.dto.ReviewResolutionDto
 import co.agrovision.network.api.dto.UploadResultDto
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -35,6 +43,7 @@ import retrofit2.Response
 import java.io.File
 import java.io.IOException
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 
 /**
@@ -49,8 +58,11 @@ class RetrofitSyncGateway @Inject constructor(
     private val api: AgroVisionApiService,
     private val publicApi: PublicApiService,
     private val client: OkHttpClient,
+    @Named("apiBaseUrl") baseUrl: String,
     @Dispatcher(AgroDispatcher.IO) private val io: CoroutineDispatcher,
 ) : SyncGateway {
+
+    private val apiBase: HttpUrl = baseUrl.toHttpUrl()
 
     override suspend fun uploadCaptures(
         batch: List<Capture>,
@@ -75,7 +87,7 @@ class RetrofitSyncGateway @Inject constructor(
                 idempotencyKey = batch.first().id,
                 body = ReviewRequestBatchDto(batch.map { it.toDto() }),
             )
-        }.map { body -> body.results.map { it.toDomain() } }
+        }.map { body -> body.results.map { it.toDomain(batchImageUploads = body.imageUploads) } }
     }
 
     /**
@@ -97,18 +109,30 @@ class RetrofitSyncGateway @Inject constructor(
             )
         }
 
+        // Contra el backend de desarrollo la URL puede llegar relativa; `resolve`
+        // la completa con la base de la API y deja intactas las absolutas.
+        val url = apiBase.resolve(presignedUrl)
+            ?: return@withContext AgroResult.failure(
+                DomainError.RemoteFailure(0, "URL de subida inválida")
+            )
+
         try {
             val call = client.newCall(
                 Request.Builder()
-                    .url(presignedUrl)
+                    .url(url)
                     .put(file.asRequestBody(JPEG.toMediaType()))
                     .build()
             )
             call.execute().use { response ->
-                if (response.isSuccessful) AgroResult.unit
-                else AgroResult.failure(
-                    DomainError.RemoteFailure(response.code, response.message)
-                )
+                when {
+                    response.isSuccessful -> AgroResult.unit
+                    // Solo posible si la URL es del propio backend: el
+                    // almacenamiento de objetos responde 403 a una firma vencida.
+                    response.code == UNAUTHORIZED -> AgroResult.failure(DomainError.NotSignedIn)
+                    else -> AgroResult.failure(
+                        DomainError.RemoteFailure(response.code, response.message)
+                    )
+                }
             }
         } catch (error: IOException) {
             AgroResult.failure(DomainError.NoConnection)
@@ -147,17 +171,15 @@ class RetrofitSyncGateway @Inject constructor(
 
     override suspend fun fetchMyResolutions(
         sinceEpochMillis: Long?,
-    ): AgroResult<List<ReviewRequest>, DomainError> = withContext(io) {
-        // Pendiente: exige el mapeo de resolución a `ReviewRequest` completo, que
-        // necesita releer la solicitud local para no perder sus imágenes. Se
-        // resuelve en el repositorio, no aquí.
-        AgroResult.success(emptyList())
+    ): AgroResult<List<RemoteReviewStatus>, DomainError> = withContext(io) {
+        request { api.myResolutions(sinceEpochMillis) }
+            .map { rows -> rows.mapNotNull { it.toDomain() } }
     }
 
     override suspend fun fetchModelManifest(
         appVersion: String,
         deviceId: String,
-    ): AgroResult<ModelManifest, DomainError> = withContext(io) {
+    ): AgroResult<ModelManifest?, DomainError> = withContext(io) {
         try {
             val response = publicApi.currentModel(appVersion = appVersion, deviceId = deviceId)
             val body = response.body()
@@ -166,6 +188,8 @@ class RetrofitSyncGateway @Inject constructor(
                     AgroResult.failure(
                         DomainError.RemoteFailure(response.code(), response.message())
                     )
+                // 204: el servidor todavía no publicó ningún modelo. No es un fallo.
+                response.code() == NO_CONTENT -> AgroResult.success(null)
                 body == null ->
                     AgroResult.failure(DomainError.RemoteFailure(response.code(), "sin cuerpo"))
                 else -> AgroResult.success(
@@ -198,12 +222,30 @@ class RetrofitSyncGateway @Inject constructor(
             }.map { }
         }
 
+    override suspend fun postFieldMetrics(
+        metrics: Map<String, String>,
+    ): AgroResult<Unit, DomainError> = withContext(io) {
+        try {
+            val response = publicApi.postFieldMetrics(metrics)
+            if (response.isSuccessful) {
+                AgroResult.unit
+            } else {
+                AgroResult.failure(DomainError.RemoteFailure(response.code(), response.message()))
+            }
+        } catch (error: IOException) {
+            AgroResult.failure(DomainError.NoConnection)
+        }
+    }
+
     // ── Utilidades ───────────────────────────────────────────────────────────
 
     private inline fun <T> request(block: () -> Response<T>): AgroResult<T, DomainError> = try {
         val response = block()
         val body = response.body()
         when {
+            // JWT vencido o ausente. Se distingue de los demás fallos porque no
+            // es culpa del lote: la cola espera sin gastar reintentos.
+            response.code() == UNAUTHORIZED -> AgroResult.failure(DomainError.NotSignedIn)
             !response.isSuccessful ->
                 AgroResult.failure(DomainError.RemoteFailure(response.code(), response.message()))
             body == null && response.code() == NO_CONTENT ->
@@ -221,6 +263,7 @@ class RetrofitSyncGateway @Inject constructor(
         const val JPEG = "image/jpeg"
         const val NOT_MODIFIED = 304
         const val NO_CONTENT = 204
+        const val UNAUTHORIZED = 401
     }
 }
 
@@ -236,7 +279,8 @@ private fun Capture.toDto() = CaptureDto(
     gateOutcome = gateOutcome.name,
     // float16 en Base64: la mitad de bytes que float32, sin pérdida relevante
     // para la agrupación por similitud del servidor.
-    embedding = embedding?.let {
+    // Un modelo simple no tiene embedding: no se manda uno vacío
+    embedding = embedding?.takeIf { it.dimension > 0 }?.let {
         Base64.encodeToString(Float16Codec.encode(it.values), Base64.NO_WRAP)
     },
     userCorrectionClassId = userCorrectionClassId,
@@ -254,18 +298,21 @@ private fun ReviewRequest.toDto() = ReviewRequestDto(
     noteText = noteText,
     createdAt = createdAtEpochMillis,
     location = location?.let { LocationDto(it.latitude, it.longitude, it.accuracyMeters) },
+    modelVersion = modelVersion,
     images = images.map { image ->
         ReviewImageDto(
             id = image.id,
             angle = image.angle.name,
-            embedding = image.embedding?.let {
+            embedding = image.embedding?.takeIf { it.dimension > 0 }?.let {
                 Base64.encodeToString(Float16Codec.encode(it.values), Base64.NO_WRAP)
             },
         )
     },
 )
 
-private fun UploadResultDto.toDomain() = UploadOutcome(
+private fun UploadResultDto.toDomain(
+    batchImageUploads: List<ImageUploadDto> = emptyList(),
+) = UploadOutcome(
     localId = id,
     serverId = serverId,
     status = when (status.lowercase()) {
@@ -277,7 +324,33 @@ private fun UploadResultDto.toDomain() = UploadOutcome(
     },
     presignedImageUrl = uploadUrl,
     rejectionReason = reason,
+    imageUploadUrls = (imageUploads + batchImageUploads)
+        .mapNotNull { upload -> upload.uploadUrl?.let { upload.imageId to it } }
+        .toMap(),
 )
+
+/** Un estado que esta versión de la app no conoce se descarta: sobrescribir la
+ *  fila con un valor por defecto mostraría al productor algo que no pasó. */
+private fun ReviewResolutionDto.toDomain(): RemoteReviewStatus? {
+    val parsedStatus = ReviewStatus.entries
+        .firstOrNull { it.name.equals(status, ignoreCase = true) }
+        ?: return null
+    return RemoteReviewStatus(
+        requestId = id,
+        status = parsedStatus,
+        resolution = resolutionType?.let { type ->
+            ReviewResolution(
+                type = ResolutionType.entries
+                    .firstOrNull { it.name.equals(type, ignoreCase = true) }
+                    ?: ResolutionType.UNUSABLE,
+                resolvedPestId = resolvedPestId,
+                agronomistResponse = agronomistResponse.orEmpty(),
+                resolvedAtEpochMillis = resolvedAt ?: 0L,
+            )
+        },
+        updatedAtEpochMillis = updatedAt,
+    )
+}
 
 private fun co.agrovision.network.api.dto.PestDto.toDomain(): PestTaxon = PestTaxon(
     id = id,

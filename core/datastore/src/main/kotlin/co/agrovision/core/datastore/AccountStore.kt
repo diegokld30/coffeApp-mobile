@@ -7,6 +7,8 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import co.agrovision.core.model.identity.Account
+import co.agrovision.core.model.identity.CoffeeVariety
+import co.agrovision.core.model.identity.PlantingAge
 import co.agrovision.core.model.identity.UserTier
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -50,9 +52,13 @@ class AccountStore @Inject constructor(
             updated.displayName?.let { preferences[Keys.DISPLAY_NAME] = it }
             updated.farmName?.let { preferences[Keys.FARM_NAME] = it }
             updated.vereda?.let { preferences[Keys.VEREDA] = it }
+            updated.municipality?.let { preferences[Keys.MUNICIPALITY] = it }
             updated.registeredAtEpochMillis?.let { preferences[Keys.REGISTERED_AT] = it }
             updated.validatedAtEpochMillis?.let { preferences[Keys.VALIDATED_AT] = it }
             preferences[Keys.TRAINING_CONSENT] = updated.trainingConsent
+            preferences[Keys.SESSION_EXPIRED] = updated.sessionExpired
+            updated.coffeeVariety?.let { preferences[Keys.COFFEE_VARIETY] = it.name }
+            updated.plantingAge?.let { preferences[Keys.PLANTING_AGE] = it.name }
         }
     }
 
@@ -66,10 +72,16 @@ class AccountStore @Inject constructor(
         displayName = preferences[Keys.DISPLAY_NAME],
         farmName = preferences[Keys.FARM_NAME],
         vereda = preferences[Keys.VEREDA],
+        municipality = preferences[Keys.MUNICIPALITY],
         registeredAtEpochMillis = preferences[Keys.REGISTERED_AT],
         validatedAtEpochMillis = preferences[Keys.VALIDATED_AT],
         deviceId = deviceId,
         trainingConsent = preferences[Keys.TRAINING_CONSENT] ?: false,
+        sessionExpired = preferences[Keys.SESSION_EXPIRED] ?: false,
+        coffeeVariety = preferences[Keys.COFFEE_VARIETY]
+            ?.let { name -> CoffeeVariety.entries.firstOrNull { it.name == name } },
+        plantingAge = preferences[Keys.PLANTING_AGE]
+            ?.let { name -> PlantingAge.entries.firstOrNull { it.name == name } },
     )
 
     private object Keys {
@@ -78,9 +90,13 @@ class AccountStore @Inject constructor(
         val DISPLAY_NAME = stringPreferencesKey("account_display_name")
         val FARM_NAME = stringPreferencesKey("account_farm_name")
         val VEREDA = stringPreferencesKey("account_vereda")
+        val MUNICIPALITY = stringPreferencesKey("account_municipality")
         val REGISTERED_AT = longPreferencesKey("account_registered_at")
         val VALIDATED_AT = longPreferencesKey("account_validated_at")
         val TRAINING_CONSENT = booleanPreferencesKey("training_consent")
+        val SESSION_EXPIRED = booleanPreferencesKey("account_session_expired")
+        val COFFEE_VARIETY = stringPreferencesKey("account_coffee_variety")
+        val PLANTING_AGE = stringPreferencesKey("account_planting_age")
         val DEVICE_ID = stringPreferencesKey("device_id")
     }
 }

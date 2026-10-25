@@ -56,20 +56,91 @@ object AgroColors {
     /** oklch(0.150 0.008 250) */
     val Bench950 = Color(0xFF090B0E)
 
-    // ── Marca: navegación, acción primaria, estado de marca. NUNCA junto a
-    //    una imagen de espécimen. ──────────────────────────────────────────────
-    /** oklch(0.66 0.24 330) */
-    val Brand400 = Color(0xFFDD47D6)
+    // ── Marca: verde hoja. Navegación, acción primaria, estado de marca.
+    //    NUNCA junto a una imagen de espécimen. ──────────────────────────────
+    //
+    // Esmeralda saturado, el verde del cafetal recién llovido. El tono de los
+    // botones (500) es más oscuro que el del degradado protagonista para que el
+    // texto blanco encima pase AA (≥ 4,5:1) en tamaño de cuerpo.
 
-    /** oklch(0.58 0.28 330) — croma reducido a 0.264 por gama sRGB */
-    val Brand500 = Color(0xFFC800C2)
+    /** oklch(0.74 0.17 152) — primario en tema oscuro */
+    val Brand400 = Color(0xFF34C77B)
 
-    /** oklch(0.50 0.26 330) — croma reducido a 0.228 por gama sRGB */
-    val Brand600 = Color(0xFFA4009F)
+    /** oklch(0.53 0.13 155) — acción primaria. Blanco encima: 5,1:1 */
+    val Brand500 = Color(0xFF087F4A)
 
-    /** oklch(0.44 0.26 330) — croma reducido a 0.201. Variante de modo exterior:
-     *  más oscura para sostener el contraste bajo luz solar directa. */
-    val BrandOutdoor = Color(0xFF890085)
+    /** oklch(0.45 0.11 155) */
+    val Brand600 = Color(0xFF06663B)
+
+    /** oklch(0.39 0.09 155). Variante de modo exterior: más oscura para
+     *  sostener el contraste bajo luz solar directa. */
+    val BrandOutdoor = Color(0xFF04522F)
+
+    /** oklch(0.95 0.03 155) — menta: indicador de navegación, fondos suaves. */
+    val Brand50 = Color(0xFFE3F6EC)
+
+    // ── Degradado protagonista y lima ────────────────────────────────────────
+    //
+    // Solo en la pieza principal de cada pantalla. La lima es el acento de la
+    // acción más importante: sobre el verde, es lo primero que se ve.
+
+    /** oklch(0.62 0.15 153) — inicio del degradado */
+    val HeroStart = Color(0xFF12A15E)
+
+    /** oklch(0.47 0.12 157) — fin del degradado */
+    val HeroEnd = Color(0xFF066E40)
+
+    /** oklch(0.92 0.17 122) */
+    val Lime = Color(0xFFD4F46C)
+
+    /** oklch(0.26 0.05 155) — tinta sobre lima: 13:1 */
+    val LimeInk = Color(0xFF0C2A1A)
+
+    // ── Pasteles de apoyo: fondos de icono y tarjetas de consejo ─────────────
+    val LimeSoft = Color(0xFFF1FBD5)
+    val Sky = Color(0xFFE4F0FD)
+    val SkyInk = Color(0xFF1B5FC7)
+
+    /** Tarjetas sobre fondo blanco: un gris con un pelo de verde. */
+    val Card = Color(0xFFF3F6F4)
+
+    // ── Oscuro premium: la apariencia por defecto ────────────────────────────
+    //
+    // Casi negro con un pelo de verde, no negro puro: el negro puro con texto
+    // blanco vibra en pantallas OLED baratas, y el tinte verde amarra la
+    // superficie a la marca sin que se note como color.
+
+    /** oklch(0.16 0.012 160) — fondo */
+    val Ink950 = Color(0xFF0B110E)
+
+    /** oklch(0.20 0.014 160) — tarjetas */
+    val Ink900 = Color(0xFF131B17)
+
+    /** oklch(0.25 0.016 160) — tarjetas elevadas, iconos sobre tarjeta */
+    val Ink800 = Color(0xFF1B2520)
+
+    /** oklch(0.31 0.016 160) — bordes finos */
+    val Ink700 = Color(0xFF28332D)
+
+    /** Texto principal: 17:1 sobre Ink950. */
+    val InkText = Color(0xFFF1F5F2)
+
+    /** Texto secundario: 7,4:1 sobre Ink950. */
+    val InkMuted = Color(0xFF9DA8A2)
+
+    /** Lima de la versión oscura: un punto más saturada que la clara. */
+    val LimeBright = Color(0xFFC8F45A)
+
+    /** Fondos teñidos de los consejos, sobre Ink950. */
+    val LimeTint = Color(0xFF222C17)
+    val SkyTint = Color(0xFF15212F)
+    val SkyBright = Color(0xFF8EC5FF)
+    val MintTint = Color(0xFF142A1E)
+    val MintBright = Color(0xFF6FDDA0)
+
+    /** Degradado protagonista en oscuro: verde bosque hacia el fondo. */
+    val HeroDarkStart = Color(0xFF1A3A29)
+    val HeroDarkEnd = Color(0xFF0F1A14)
 
     // ── Chispa: alertas de brote. Y nada más. ────────────────────────────────
     /** oklch(0.88 0.17 95) */

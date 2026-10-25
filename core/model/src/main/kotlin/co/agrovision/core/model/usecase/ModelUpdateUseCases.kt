@@ -41,15 +41,22 @@ class CheckModelUpdateUseCase @Inject constructor(
 
         return registry.fetchManifest().map { manifest ->
             registry.recordCheck(now)
-            decide(manifest, state.active?.version)
+            // Sin modelo publicado la app sigue con el que trae de fábrica
+            if (manifest == null) ModelUpdateDecision.UpToDate else decide(manifest, state.active?.version)
         }
     }
 
     private fun decide(manifest: ModelManifest, activeVersion: String?): ModelUpdateDecision {
         // El interruptor de emergencia se atiende antes que nada: su razón de
         // ser es retirar una versión sin esperar al ciclo normal (§8.4).
+        // Solo afecta a quien lo tiene instalado: un teléfono que nunca recibió esa
+        // versión no tiene nada que revertir, y revertir su modelo actual sería un daño.
         if (manifest.killSwitch) {
-            return ModelUpdateDecision.KillSwitchTriggered(manifest.version)
+            return if (activeVersion == manifest.version) {
+                ModelUpdateDecision.KillSwitchTriggered(manifest.version)
+            } else {
+                ModelUpdateDecision.UpToDate
+            }
         }
 
         val installed = SemanticVersion.parseOrNull(manifest.minAppVersion)
